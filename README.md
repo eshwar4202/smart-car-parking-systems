@@ -4,7 +4,7 @@ The Smart Car Parking System is designed to simplify finding, reserving, and man
 
 Features
 1. Spot Reservation and Cancelation
-View and Reserve Parking Lots: Users can browse available parking lots in a given area and reserve them for specific dates and times.
+View and Reserve Parking Lots: Users can browse available parking lots in a given area and reserve them for specific dates and times.\n
 Real-Time Data Updates: The system updates parking lot availability in real-time.
 Search and Filter Options: Easily navigate through lots using search bars and filters.
 Notifications: Receive email confirmations and updates about reservations.
