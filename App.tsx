@@ -4,6 +4,7 @@ import Auth from './components/Auth'
 import Account from './components/Account'
 import { View, StyleSheet, Text } from 'react-native'
 import { Session } from '@supabase/supabase-js'
+import Grid from './components/Grid'
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -19,9 +20,8 @@ export default function App() {
   }, [])
 
   return (
-    <View style = {styles.centered}>
-      <Text style ={styles.header}>Login</Text>
-      {session && session.user ? <Account key={session.user.id} session={session}/> : <Auth />}
+    <View style={styles.centered}>
+      {session && session.user ? <Account key={session.user.id} session={session} /> : <Auth />}
     </View>
   )
 }
@@ -29,7 +29,7 @@ export default function App() {
 const styles = StyleSheet.create({
   centered: {
     justifyContent: "center",
-    top : 150,
+    top: 150,
   },
   header: {
     fontWeight: 'bold',

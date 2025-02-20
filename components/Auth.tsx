@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, View, AppState } from 'react-native';
+import { Alert, StyleSheet, View, AppState, ScrollView } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Button, Input } from '@rneui/themed';
 
@@ -47,63 +47,67 @@ export default function Auth() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.verticallySpaced, styles.mt20]}>
-        <Input
-          label="Email"
-          leftIcon={{ type: 'font-awesome', name: 'envelope', color: '#4C4C9D' }}
-          onChangeText={(text) => setEmail(text)}
-          value={email}
-          placeholder="email@address.com"
-          autoCapitalize={'none'}
-          inputStyle={styles.inputStyle}
-          inputContainerStyle={styles.inputContainer}
-          labelStyle={styles.labelStyle}
-        />
+    <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <View style={styles.container}>
+        <View style={[styles.verticallySpaced, styles.mt20]}>
+          <Input
+            label="Email"
+            leftIcon={{ type: 'font-awesome', name: 'envelope', color: '#4C4C9D' }}
+            onChangeText={(text) => setEmail(text)}
+            value={email}
+            placeholder="email@address.com"
+            autoCapitalize={'none'}
+            inputStyle={styles.inputStyle}
+            inputContainerStyle={styles.inputContainer}
+            labelStyle={styles.labelStyle}
+          />
+        </View>
+        <View style={[styles.verticallySpaced, styles.inputSpacing]}>
+          <Input
+            label="Password"
+            leftIcon={{ type: 'font-awesome', name: 'lock', color: '#4C4C9D' }}
+            onChangeText={(text) => setPassword(text)}
+            value={password}
+            secureTextEntry={true}
+            placeholder="Password"
+            autoCapitalize={'none'}
+            inputStyle={styles.inputStyle}
+            inputContainerStyle={styles.inputContainer}
+            labelStyle={styles.labelStyle}
+          />
+        </View>
+        <View style={[styles.verticallySpaced, styles.mt20]}>
+          <Button
+            title="Sign in"
+            buttonStyle={styles.buttonStyle}
+            titleStyle={styles.buttonTitleStyle}
+            disabled={loading}
+            onPress={() => signInWithEmail()}
+          />
+        </View>
+        <View style={styles.verticallySpaced}>
+          <Button
+            title="Sign up"
+            buttonStyle={styles.buttonStyle}
+            titleStyle={styles.buttonTitleStyle}
+            disabled={loading}
+            onPress={() => signUpWithEmail()}
+          />
+        </View>
       </View>
-      <View style={styles.verticallySpaced}>
-        <Input
-          label="Password"
-          leftIcon={{ type: 'font-awesome', name: 'lock', color: '#4C4C9D' }}
-          onChangeText={(text) => setPassword(text)}
-          value={password}
-          secureTextEntry={true}
-          placeholder="Password"
-          autoCapitalize={'none'}
-          inputStyle={styles.inputStyle}
-          inputContainerStyle={styles.inputContainer}
-          labelStyle={styles.labelStyle}
-        />
-      </View>
-      <View style={[styles.verticallySpaced, styles.mt20]}>
-        <Button
-          title="Sign in"
-          buttonStyle={styles.buttonStyle}
-          titleStyle={styles.buttonTitleStyle}
-          disabled={loading}
-          onPress={() => signInWithEmail()}
-        />
-      </View>
-      <View style={styles.verticallySpaced}>
-        <Button
-          title="Sign up"
-          buttonStyle={styles.buttonStyle}
-          titleStyle={styles.buttonTitleStyle}
-          disabled={loading}
-          onPress={() => signUpWithEmail()}
-        />
-      </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginTop: 40,
-    padding: 20,
-    backgroundColor: '#F7F9FC',
-    flex: 1,
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
+    backgroundColor: '#F7F9FC',
+  },
+  container: {
+    padding: 20,
+    alignItems: 'center',
   },
   verticallySpaced: {
     paddingTop: 8,
@@ -131,9 +135,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#4C4C9D',
     borderRadius: 8,
     paddingVertical: 12,
+    width: '100%',
   },
   buttonTitleStyle: {
     fontWeight: 'bold',
     fontSize: 16,
   },
+  inputSpacing: {
+    marginTop: 10,
+  },
 });
+
