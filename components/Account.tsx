@@ -51,7 +51,7 @@ export default function Account({ session }: { session: Session }) {
         <Map />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.booked} onPress={() => navigation.navigate('Booked')}>
+      <TouchableOpacity style={styles.booked} onPress={() => navigation.navigate('visual')}>
         <Text style={styles.buttonText}>Booked</Text>
       </TouchableOpacity>
 

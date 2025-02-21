@@ -7,6 +7,7 @@ import { View, StyleSheet } from 'react-native'
 import { Session } from '@supabase/supabase-js'
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack'; // Import Stack Navigator
+import Visulization from './components/Visualization'
 
 const Stack = createStackNavigator();
 
@@ -29,6 +30,7 @@ export default function App() {
         <Stack.Navigator>
           <Stack.Screen name="Account" component={Account} options={{ headerShown: false }} />
           <Stack.Screen name="Map" component={Map} />
+          <Stack.Screen name="visual" component={Visulization} />
           {/* Add other screens here */}
         </Stack.Navigator>
       ) : (
