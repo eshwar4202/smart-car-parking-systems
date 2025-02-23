@@ -4,9 +4,9 @@ import { StyleSheet, View, Alert, TouchableOpacity, Text } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import Map from './Map';
 import { useNavigation } from '@react-navigation/native'; // Import navigation hook
-import install from './Installments.tsx';
-import SplitBill from './SplitBill';
-import RecurringPayments from './RecurringPayments';
+import install from './Installments';
+import split from './SplitBill';
+import recur from './RecurringPayments';
 
 export default function Account({ session }: { session: Session }) {
   const [loading, setLoading] = useState(true);
@@ -62,11 +62,11 @@ export default function Account({ session }: { session: Session }) {
         <Text style={styles.buttonText}>Service</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.pay_history} onPress={() => navigation.navigate('RecurringPayments')}>
+      <TouchableOpacity style={styles.pay_history} onPress={() => navigation.navigate('recur_pay')}>
         <Text style={styles.buttonText}>Pay History</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.adv_pay} onPress={() => navigation.navigate('SplitBill')}>
+      <TouchableOpacity style={styles.adv_pay} onPress={() => navigation.navigate('split')}>
         <Text style={styles.buttonText}>Advance Pay</Text>
       </TouchableOpacity>
     </View>

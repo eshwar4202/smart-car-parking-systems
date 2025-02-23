@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Button, Picker } from 'react-native';
+import { View, Text, Button } from 'react-native';
+import { Picker } from '@react-native-picker/picker'; // ✅ Correct Import
 
 const Installments = () => {
   const [months, setMonths] = useState('3');
@@ -18,3 +19,4 @@ const Installments = () => {
 };
 
 export default Installments;
+
