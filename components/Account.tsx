@@ -69,6 +69,10 @@ export default function Account({ session }: { session: Session }) {
       <TouchableOpacity style={styles.adv_pay} onPress={() => navigation.navigate('split')}>
         <Text style={styles.buttonText}>Advance Pay</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity style={styles.user} onPress={() => navigation.navigate('split')}>
+        <Text style={styles.buttonText}>Profile</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -132,5 +136,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  user: {
+    top: -120,
+    backgroundColor: 'blue',
+    width: 330,
+    left: 14,
+    height: 50,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+
+  }
 });
 
