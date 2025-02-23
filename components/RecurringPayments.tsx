@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Switch, Button } from 'react-native';
-import { supabase } from './lib/supabase';
+import { supabase } from '../lib/supabase';
 
 const RecurringPayments = () => {
   const [enabled, setEnabled] = useState(false);

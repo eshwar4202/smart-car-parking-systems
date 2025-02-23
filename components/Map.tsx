@@ -1,28 +1,14 @@
-import React from 'react';
-import MapView from 'react-native-maps';
-
-import { useState, useEffect } from 'react';
-import { Platform, Text, View, StyleSheet } from 'react-native';
-
-import * as Device from 'expo-device';
-
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 
-import { Marker } from 'react-native-maps';
-
-export default function App() {
-
+export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     async function getCurrentLocation() {
-      if (Platform.OS === 'android' && !Device.isDevice) {
-        setErrorMsg(
-          'Oops, this will not work on Snack in an Android Emulator. Try it on your device!'
-        );
-        return;
-      }
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setErrorMsg('Permission to access location was denied');
@@ -36,44 +22,46 @@ export default function App() {
     getCurrentLocation();
   }, []);
 
-  const [region, setRegion] = useState({
-    latitude: 51.5079145,
-    longitude: -0.0899163,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  });
-
-  let text = 'Waiting...';
-  if (errorMsg) {
-    text = errorMsg;
-  } else if (location) {
-    text = JSON.stringify(location);
-  }
   return (
-    <View style={{ flex: 1 }}>
-      <MapView
-        style={StyleSheet.absoluteFill}
-        showsUserLocation
-        showsMyLocationButton
-        loadingEnabled
-        showsTraffic
-        region={{
-          latitude: region.latitude,
-          longitude: region.longitude,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
-
-        }}
-        onRegionChangeComplete={(region) => setRegion(region)}
-      >
-        <Marker
-          coordinate={{
-            latitude: 35.67714827145542,
-            longitude: 139.6551462687416,
+    <View style={styles.container}>
+      {errorMsg ? (
+        <Text>{errorMsg}</Text>
+      ) : location ? (
+        <MapView
+          style={styles.map}
+          initialRegion={{
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
           }}
-        />
-
-      </MapView>
+          showsUserLocation
+          showsMyLocationButton
+        >
+          {/* Marker for current location */}
+          <Marker
+            coordinate={{
+              latitude: location.coords.latitude + 4,
+              longitude: location.coords.longitude + 4,
+            }}
+            title="You are here"
+            description="This is your current location"
+          />
+        </MapView>
+      ) : (
+        <ActivityIndicator size="large" color="#0000ff" />
+      )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+});
+
