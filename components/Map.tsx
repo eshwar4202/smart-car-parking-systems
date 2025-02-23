@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { useNavigation } from '@react-navigation/native';
 
 export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -21,7 +22,7 @@ export default function MapScreen() {
 
     getCurrentLocation();
   }, []);
-
+  const navigation = useNavigation();
   return (
     <View style={styles.container}>
       {errorMsg ? (
@@ -41,11 +42,12 @@ export default function MapScreen() {
           {/* Marker for current location */}
           <Marker
             coordinate={{
-              latitude: location.coords.latitude + 4,
-              longitude: location.coords.longitude + 4,
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude + 0.005,
             }}
-            title="You are here"
-            description="This is your current location"
+            title="Parking 1"
+            description="This is a Parking Location"
+            onPress={() => navigation.navigate('visual')}
           />
         </MapView>
       ) : (
