@@ -4,9 +4,7 @@ import { StyleSheet, View, Alert, TouchableOpacity, Text } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import Map from './Map';
 import { useNavigation } from '@react-navigation/native'; // Import navigation hook
-import install from './Installments';
-import split from './SplitBill';
-import recur from './RecurringPayments';
+//import profile from './profile';
 
 export default function Account({ session }: { session: Session }) {
   const [loading, setLoading] = useState(true);
@@ -71,7 +69,7 @@ export default function Account({ session }: { session: Session }) {
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.user} onPress={() => navigation.navigate('split')}>
-        <Text style={styles.buttonText}>Profile</Text>
+
       </TouchableOpacity>
     </View>
   );

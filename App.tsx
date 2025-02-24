@@ -8,9 +8,6 @@ import { Session } from '@supabase/supabase-js'
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack'; // Import Stack Navigator
 import Visulization from './components/Visualization';
-import install from './components/Installments';
-import split from './components/SplitBill';
-import recur from './components/RecurringPayments';
 
 const Stack = createStackNavigator();
 
@@ -34,9 +31,9 @@ export default function App() {
           <Stack.Screen name="Account" component={Account} options={{ headerShown: false }} />
           <Stack.Screen name="Map" component={Map} />
           <Stack.Screen name="visual" component={Visulization} />
-          <Stack.Screen name="install" component={install} />
-          <Stack.Screen name="split" component={split} />
-          <Stack.Screen name="recur_pay" component={recur} />
+          <Stack.Screen name="install" component={Visulization} />
+          <Stack.Screen name="split" component={Visulization} />
+          <Stack.Screen name="recur_pay" component={Visulization} />
           {/* Add other screens here */}
         </Stack.Navigator>
       ) : (
