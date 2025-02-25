@@ -2,10 +2,17 @@ import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import Auth from './components/Auth'
 import Account from './components/Account'
-import { View, StyleSheet, Text } from 'react-native'
+import Map from './components/Map'  // Import Map screen
+import { View, StyleSheet } from 'react-native'
 import { Session } from '@supabase/supabase-js'
 import { NavigationContainer } from '@react-navigation/native';
-import Grid from './components/Grid'
+import { createStackNavigator } from '@react-navigation/stack'; // Import Stack Navigator
+import Visulization from './components/Visualization';
+import Book from './components/Book';
+import Payment from './components/Payment';
+import Service from './components/Service';
+
+const Stack = createStackNavigator();
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -22,9 +29,19 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      <View style={styles.centered}>
-        {session && session.user ? <Account key={session.user.id} session={session} /> : <Auth />}
-      </View>
+      {session && session.user ? (
+        <Stack.Navigator>
+          <Stack.Screen name="Account" component={Account} options={{ headerShown: false }} />
+          <Stack.Screen name="Map" component={Map} />
+          <Stack.Screen name="visual" component={Visulization} />
+          <Stack.Screen name="book" component={Book} />
+          <Stack.Screen name="Payment" component={Payment} />
+          <Stack.Screen name="Service" component={Service} />
+          {/* Add other screens here */}
+        </Stack.Navigator>
+      ) : (
+        <Auth />
+      )}
     </NavigationContainer>
   )
 }
@@ -34,9 +51,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     top: 150,
   },
-  header: {
-    fontWeight: 'bold',
-    fontSize: 30,
-    left: 20,
-  }
 });
+
