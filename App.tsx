@@ -11,6 +11,8 @@ import Visulization from './components/Visualization'
 import Payment from './components/Payment'
 import Service from './components/Service'
 import Book from './components/Book'
+import FAQ from './components/Faq'
+import Pay_hist from './components/Pay_hist.tsx'
 
 const Stack = createStackNavigator()
 
@@ -21,7 +23,7 @@ export default function App() {
     // Fetch initial session when the app loads
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      console.log(session);
+      console.log(session.user.id);
       setSession(session)
     }
 
@@ -42,10 +44,12 @@ export default function App() {
         <Stack.Navigator>
           <Stack.Screen name="Account" component={Account} options={{ headerShown: false }} />
           <Stack.Screen name="Map" component={Map} />
-          <Stack.Screen name="visual" component={Visulization} />
-          <Stack.Screen name="Book" component={Book} />
+          <Stack.Screen name="visual" component={Visulization} initialParams={{ session }} />
+          <Stack.Screen name="Book" component={Book} initialParams={{ session }} />
           <Stack.Screen name="Service" component={Service} />
           <Stack.Screen name="Payment" component={Payment} />
+          <Stack.Screen name='faq' component={FAQ} />
+          <Stack.Screen name='Pay_hist' component={Pay_hist} initialParams={{ session }} />
           {/* Add other screens here */}
         </Stack.Navigator>
       ) : (

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, Alert, Button } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Alert, ScrollView } from 'react-native'; // Added ScrollView
 import { createClient } from '@supabase/supabase-js';
 import { useNavigation } from '@react-navigation/native';
 
@@ -31,7 +31,7 @@ const SmartParkingSystem = () => {
       const { data, error } = await supabase
         .from('parking_slots')
         .select('*, profiles(username)')
-        .order('id'); // order by id for consistency
+        .order('id');
 
       if (error) throw error;
 
@@ -54,36 +54,30 @@ const SmartParkingSystem = () => {
     try {
       console.log('Updating Slot ID:', slotId, 'to Status:', newStatus);
 
-      // Ensure slotId is an integer and fetch updated row
       const { data, error } = await supabase
         .from('parking_slots')
         .update({ status: newStatus })
         .eq('id', parseInt(slotId, 10))
-        .select('*'); // returns updated rows
+        .select('*');
 
-      // Check for error
       if (error) throw error;
 
-      // If no rows were updated, data might be null or empty
       if (!data || data.length === 0) {
         throw new Error('No matching slot found to update.');
       }
 
-      // Optimistically update local state for instant UI feedback
       setSlots((prevSlots) =>
         prevSlots.map((slot) =>
           slot.id === slotId ? { ...slot, status: newStatus } : slot
         )
       );
 
-      // Add or remove from selected slots
       if (newStatus === SLOT_STATUS.RESERVED) {
         setSelectedSlots(prev => [...prev, slotId]);
       } else {
         setSelectedSlots(prev => prev.filter(id => id !== slotId));
       }
 
-      // Re-fetch to ensure data sync with Supabase
       fetchSlots();
     } catch (err) {
       console.error('Update Slot Error:', err);
@@ -96,7 +90,6 @@ const SmartParkingSystem = () => {
     if (slot.status === SLOT_STATUS.EMPTY) {
       updateSlot(slot.id, SLOT_STATUS.RESERVED);
     } else if (slot.status === SLOT_STATUS.RESERVED) {
-      // Check if this is one of our selected slots
       if (selectedSlots.includes(slot.id)) {
         updateSlot(slot.id, SLOT_STATUS.EMPTY);
       } else {
@@ -116,7 +109,6 @@ const SmartParkingSystem = () => {
 
     const totalAmount = selectedSlots.length * PRICE_PER_SLOT;
 
-    // Navigate to payment page with selected slots and amount
     navigation.navigate('Payment', {
       slots: selectedSlots,
       amount: totalAmount,
@@ -130,7 +122,6 @@ const SmartParkingSystem = () => {
       style={[
         styles.slot,
         getSlotStyle(item.status),
-        // Highlight selected slots
         selectedSlots.includes(item.id) && styles.selectedSlot
       ]}
       onPress={() => handleSlotPress(item)}
@@ -177,39 +168,41 @@ const SmartParkingSystem = () => {
   // Main render
   return (
     <View style={styles.container}>
-      {/* Pricing information */}
-      <View style={styles.infoCard}>
-        <Text style={styles.infoText}>Price per slot: ₹{PRICE_PER_SLOT}</Text>
-        <Text style={styles.infoText}>
-          Selected slots: {selectedSlots.length}
-          {selectedSlots.length > 0 ? ` (₹${selectedSlots.length * PRICE_PER_SLOT})` : ''}
-        </Text>
-      </View>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Pricing information */}
+        <View style={styles.infoCard}>
+          <Text style={styles.infoText}>Price per slot: ₹{PRICE_PER_SLOT}</Text>
+          <Text style={styles.infoText}>
+            Selected slots: {selectedSlots.length}
+            {selectedSlots.length > 0 ? ` (₹${selectedSlots.length * PRICE_PER_SLOT})` : ''}
+          </Text>
+        </View>
 
-      {/* Slot display */}
-      {decks.map((deck) => {
-        const filteredSlots = slots.filter(
-          (slot) => slot.deck.trim().toLowerCase() === deck.trim().toLowerCase()
-        );
+        {/* Slot display */}
+        {decks.map((deck) => {
+          const filteredSlots = slots.filter(
+            (slot) => slot.deck.trim().toLowerCase() === deck.trim().toLowerCase()
+          );
 
-        return (
-          <View key={deck} style={styles.deck}>
-            <Text style={styles.deckTitle}>{deck}</Text>
-            {filteredSlots.length > 0 ? (
-              <FlatList
-                data={filteredSlots}
-                renderItem={renderSlot}
-                keyExtractor={(item) => item.id.toString()}
-                numColumns={3}
-              />
-            ) : (
-              <Text>No slots available for this deck.</Text>
-            )}
-          </View>
-        );
-      })}
+          return (
+            <View key={deck} style={styles.deck}>
+              <Text style={styles.deckTitle}>{deck}</Text>
+              {filteredSlots.length > 0 ? (
+                <FlatList
+                  data={filteredSlots}
+                  renderItem={renderSlot}
+                  keyExtractor={(item) => item.id.toString()}
+                  numColumns={3}
+                />
+              ) : (
+                <Text>No slots available for this deck.</Text>
+              )}
+            </View>
+          );
+        })}
+      </ScrollView>
 
-      {/* Payment button - only visible when slots are selected */}
+      {/* Payment button - positioned absolutely */}
       {selectedSlots.length > 0 && (
         <View style={styles.paymentButtonContainer}>
           <TouchableOpacity
@@ -231,7 +224,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
     padding: 10,
+    paddingBottom: 80, // Extra padding to ensure content isn't hidden behind payment button
   },
   infoCard: {
     backgroundColor: '#fff',

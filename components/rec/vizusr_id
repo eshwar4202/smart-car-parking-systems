@@ -24,15 +24,31 @@ const SmartParkingSystem = ({ route }) => {
   const navigation = useNavigation();
 
   useEffect(() => {
-    // Fetch slots and set userId from the session prop
+    // Fetch slots and user session on component mount
     fetchSlots();
-    if (session && session.user) {
-      setUserId(session.user.id); // Set userId from the passed session
-      console.log('User ID in SmartParkingSystem:', session.user.id); // Should work
+    if (session) {
+      console.log('User ID in Visualization.tsx:', session.user.id); // Should now work
     } else {
-      console.log('No session in SmartParkingSystem');
+      console.log('No session in Visualization.tsx');
     }
   }, [session]);
+
+  // Fetch the current user's session to get the UUID
+  const fetchUserSession = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      if (session && session.user) {
+        setUserId(session.user.id); // Set the user ID from the session
+        console.log('User ID:', session.user.id);
+      } else {
+        console.log('No active session found.');
+      }
+    } catch (err) {
+      console.error('Fetch Session Error:', err.message);
+      Alert.alert('Error', 'Failed to fetch user session.');
+    }
+  };
 
   // Fetch slots from Supabase
   const fetchSlots = async () => {
@@ -69,9 +85,9 @@ const SmartParkingSystem = ({ route }) => {
 
       // If reserving a slot, include the current user's UUID
       if (newStatus === SLOT_STATUS.RESERVED && userId) {
-        updateData.uid = userId;
+        updateData.uuid = userId;
       } else if (newStatus === SLOT_STATUS.EMPTY) {
-        updateData.uid = null; // Clear UUID if slot is set back to empty
+        updateData.uuid = null; // Clear UUID if slot is set back to empty
       }
 
       const { data, error } = await supabase
@@ -138,7 +154,6 @@ const SmartParkingSystem = ({ route }) => {
       slots: selectedSlots,
       amount: totalAmount,
       pricePerSlot: PRICE_PER_SLOT,
-      session: session,
     });
   };
 
@@ -147,25 +162,20 @@ const SmartParkingSystem = ({ route }) => {
     <TouchableOpacity
       style={[
         styles.slot,
-        getSlotStyle(item.status, item.uid),
+        getSlotStyle(item.status),
         selectedSlots.includes(item.id) && styles.selectedSlot,
       ]}
       onPress={() => handleSlotPress(item)}
     >
       <Text style={styles.slotText}>{item.id}</Text>
       {(() => {
-        if (item.profiles && item.uid != userId) {
+        if (item.profiles) {
           return (
             <Text style={styles.slotInfo}>
-              Booked
+              Booked by: {item.profiles.username}
             </Text>
           );
-        } else if (item.uid == userId) {
-          return (
-            <Text style={styles.slotInfo}>Booked by you</Text>
-          )
-        }
-        else if (!item.profiles && item.status === SLOT_STATUS.OCCUPIED) {
+        } else if (!item.profiles && item.status === SLOT_STATUS.OCCUPIED) {
           return (
             <Text style={styles.slotInfo}>Booked</Text>
           );
@@ -179,12 +189,8 @@ const SmartParkingSystem = ({ route }) => {
   );
 
   // Determine slot style based on status
-  const getSlotStyle = (status, slotUid) => {
-    if (status === SLOT_STATUS.RESERVED && slotUid === userId) {
-      return styles.yourSlot; // Green for slots reserved by the current user
-    }
+  const getSlotStyle = (status) => {
     switch (status) {
-
       case SLOT_STATUS.EMPTY:
         return styles.emptySlot;
       case SLOT_STATUS.RESERVED:
@@ -303,9 +309,6 @@ const styles = StyleSheet.create({
   },
   occupiedSlot: {
     backgroundColor: '#e53935',
-  },
-  yourSlot: {
-    backgroundColor: 'green',
   },
   selectedSlot: {
     borderColor: '#4CAF50',

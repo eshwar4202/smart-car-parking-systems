@@ -1,60 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = 'https://velagnrotxuqhiczsczz.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbGFnbnJvdHh1cWhpY3pzY3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MjkxMjcsImV4cCI6MjA1NTIwNTEyN30.Xpr6wjdZdL6KN4gcZZ_q0aHOLpN3aAcG89uso0a_Fsw';
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const Payment = ({ route, navigation }) => {
-  const { slots, amount, pricePerSlot, session } = route.params;
-  const [userId, setUserId] = useState(null);
+  // Get the parameters passed from the SmartParkingSystem
+  const { slots, amount, pricePerSlot } = route.params;
 
-  useEffect(() => {
-    if (session && session.user && session.user.id) {
-      setUserId(session.user.id);
-    } else {
-      console.log('Invalid or missing session data');
-      Alert.alert('Error', 'Authentication session is missing. Please log in again.');
-      navigation.goBack();
-    }
-  }, [session, navigation]);
-
-  const handlePayment = async () => {
-    if (!userId) {
-      Alert.alert('Error', 'User not authenticated');
-      return;
-    }
-
-    try {
-      const paymentData = {
-        user_id: userId,
-        date: new Date().toISOString(),
-        amount: amount,
-        status: 'Success',
-        lot: slots,
-      };
-
-      const { error } = await supabase
-        .from('payment_history')
-        .insert([paymentData]);
-
-      if (error) throw error;
-
-      Alert.alert(
-        "Payment Successful",
-        `You have successfully reserved ${slots.length} parking slot(s) for ₹${amount}.`,
-        [
-          {
-            text: "OK",
-            onPress: () => navigation.navigate('Account')
-          }
-        ]
-      );
-    } catch (err) {
-      console.error('Payment error:', err);
-      Alert.alert('Error', 'Failed to process payment. Please try again.');
-    }
+  const handlePayment = () => {
+    // Here you would integrate with a payment gateway
+    // For now, we'll just simulate a successful payment
+    Alert.alert(
+      "Payment Successful",
+      `You have successfully reserved ${slots.length} parking slot(s) for ₹${amount}.`,
+      [
+        {
+          text: "OK",
+          onPress: () => navigation.navigate('Account')  // Navigate back to main screen after payment
+        }
+      ]
+    );
   };
 
   return (
@@ -97,7 +60,6 @@ const Payment = ({ route, navigation }) => {
   );
 };
 
-// Styles remain unchanged
 const styles = StyleSheet.create({
   container: {
     flex: 1,

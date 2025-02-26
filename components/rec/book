@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, FlatList, ActivityIndicator } from "react-native";
 import { supabase } from "../lib/supabase";
 import { Svg, Circle } from "react-native-svg";
+import { TouchableOpacity } from "react-native-gesture-handler";
 import { useNavigation } from "@react-navigation/native";
 
 export default function ParkingSlots({ route }) {
@@ -12,12 +12,17 @@ export default function ParkingSlots({ route }) {
   const navigation = useNavigation();
   const [userId, setUserId] = useState(null);
 
+  // Modify useEffect to handle userId dependency
   useEffect(() => {
     if (session && session.user) {
       setUserId(session.user.id);
+      console.log('User ID in Booking:', session.user.id);
+    } else {
+      console.log('No session in SmartParkingSystem');
     }
   }, [session]);
 
+  // Separate useEffect for fetching slots when userId changes
   useEffect(() => {
     if (userId) {
       fetchParkingSlots();
@@ -26,49 +31,26 @@ export default function ParkingSlots({ route }) {
 
   async function fetchParkingSlots() {
     setLoading(true);
+
     try {
+      // Fetch parking slots booked by the current user
       const { data, error } = await supabase
         .from("parking_slots")
-        .select("id, deck, status, uid")
-        .eq("uid", userId)
-        .neq("status", "cancelled") // Ensure cancelled slots are not fetched
+        .select("id, status, profiles(username, avatar_url)")
+        .eq("uid", userId) // Use user_id column instead of profiles.id
         .order("id", { ascending: true });
 
-      if (error) throw error;
-      setParkingSlots(data);
+      if (error) {
+        console.error("Error fetching parking slots:", error.message);
+        setParkingSlots([]); // Set empty array on error
+      } else {
+        setParkingSlots(data);
+      }
     } catch (err) {
-      console.error("Error fetching slots:", err);
-      setParkingSlots([]);
+      console.error("Unexpected error:", err);
     } finally {
       setLoading(false);
     }
-  }
-
-  async function cancelSlot(slotId) {
-    Alert.alert(
-      "Cancel Booking",
-      "Are you sure you want to cancel this slot?",
-      [
-        { text: "No", style: "cancel" },
-        {
-          text: "Yes",
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from("parking_slots")
-                .update({ status: "empty", uid: null }) // Mark slot as cancelled
-                .eq("id", slotId)
-                .eq("uid", userId);
-
-              if (error) throw error;
-              fetchParkingSlots(); // Refresh the list after cancellation
-            } catch (err) {
-              console.error("Error cancelling slot:", err);
-            }
-          },
-        },
-      ]
-    );
   }
 
   if (loading) {
@@ -84,16 +66,15 @@ export default function ParkingSlots({ route }) {
     <FlatList
       data={parkingSlots}
       keyExtractor={(item) => item.id.toString()}
-      renderItem={({ item }) => (
-        <ParkingSlotCard slot={item} navigation={navigation} onCancel={cancelSlot} />
-      )}
+      renderItem={({ item }) => <ParkingSlotCard slot={item} navigation={navigation} />}
       contentContainerStyle={styles.listContainer}
       ListEmptyComponent={<Text>No booked slots found</Text>}
     />
   );
 }
 
-function ParkingSlotCard({ slot, navigation, onCancel }) {
+// ParkingSlotCard component remains the same
+function ParkingSlotCard({ slot, navigation }) {
   const isOccupied = slot.status === "reserved";
 
   return (
@@ -106,20 +87,24 @@ function ParkingSlotCard({ slot, navigation, onCancel }) {
       </Svg>
 
       <View style={styles.cardText}>
-        <Text style={styles.slotNumber}>Slot {slot.id} ({slot.deck})</Text>
-        <Text style={styles.statusText}>{isOccupied ? "Booked" : "Available"}</Text>
+        <Text style={styles.slotNumber}>Slot {slot.id}</Text>
+        <Text style={styles.username}>
+          {(() => {
+            if (slot.profiles) {
+              return `Booked by: ${slot.profiles.username}`;
+            } else if (isOccupied) {
+              return "Booked";
+            } else {
+              return "Available";
+            }
+          })()}
+        </Text>
       </View>
-
-      {isOccupied && (
-        <TouchableOpacity style={styles.cancelButton} onPress={() => onCancel(slot.id)}>
-          <Text style={styles.cancelText}>X</Text>
-        </TouchableOpacity>
-      )}
     </TouchableOpacity>
   );
 }
 
-// Styles
+// Styles remain the same
 const styles = StyleSheet.create({
   loaderContainer: {
     flex: 1,
@@ -141,7 +126,6 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 5,
     marginBottom: 10,
-    justifyContent: "space-between",
   },
   occupied: {
     borderLeftWidth: 5,
@@ -152,30 +136,14 @@ const styles = StyleSheet.create({
     borderLeftColor: "green",
   },
   cardText: {
-    flex: 1,
     marginLeft: 15,
   },
   slotNumber: {
     fontSize: 18,
     fontWeight: "bold",
   },
-  statusText: {
+  username: {
     fontSize: 14,
     color: "gray",
   },
-  cancelButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "red",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cancelText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
 });
-
-
