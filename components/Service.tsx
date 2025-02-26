@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Alert } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { createClient } from '@supabase/supabase-js';
+import { useNavigation } from '@react-navigation/native';
 
 // Supabase Configuration
 const supabaseUrl = 'https://velagnrotxuqhiczsczz.supabase.co';
@@ -20,6 +21,7 @@ const ServiceBooking = () => {
   const [selectedService, setSelectedService] = useState(null);
   const [date, setDate] = useState(new Date());
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const navigation = useNavigation();
 
   // Function to book a service
   const bookService = async () => {
@@ -89,7 +91,11 @@ const ServiceBooking = () => {
       <TouchableOpacity style={styles.bookButton} onPress={bookService}>
         <Text style={styles.buttonText}>Book Service</Text>
       </TouchableOpacity>
-    </View>
+
+      <TouchableOpacity style={styles.faq} onPress={() => navigation.navigate('faq')}>
+        <Text style={styles.buttonText}>FAQ</Text>
+      </TouchableOpacity>
+    </View >
   );
 };
 
@@ -144,6 +150,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
   },
+
+  faq: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#007bff',
+    alignItems: 'center',
+    borderRadius: 5,
+  },
+
 });
 
 export default ServiceBooking;

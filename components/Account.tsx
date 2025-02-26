@@ -52,7 +52,8 @@ export default function Account({ session }: { session: Session }) {
   const service = require('../assets/service.jpg');
   const adv_pay = require('../assets/adv_pay.jpg');
   return (
-    <View>
+    <View style={styles.app}>
+
       <TouchableOpacity style={styles.map} onPress={() => navigation.navigate('Map')}>
         <Map />
       </TouchableOpacity>
@@ -70,7 +71,7 @@ export default function Account({ session }: { session: Session }) {
         </ImageBackground>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('install')}>
+      <TouchableOpacity onPress={() => navigation.navigate('Pay_hist')}>
         <ImageBackground source={pay} resizeMode="cover" style={styles.pay_history}>
           <Text style={styles.buttonText}>Pay History</Text>
         </ImageBackground>
@@ -90,20 +91,24 @@ export default function Account({ session }: { session: Session }) {
 }
 
 const styles = StyleSheet.create({
+
+  app: {
+    backgroundColor: 'white',
+  },
   map: {
     top: 20,
     left: 10,
     width: 340,
     height: 200,
-    borderWidth: 3,
+    //borderWidth: 3,
     borderRadius: 5,
     elevation: 10,
   },
   booked: {
     top: 35,
     left: 10,
-    width: 130,
-    height: 150,
+    width: 180,
+    height: 180,
     backgroundColor: 'blue',
     //borderWidth: 3,
     borderRadius: 5,
@@ -111,10 +116,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   service: {
-    top: -115,
-    left: 150,
-    width: 200,
-    height: 150,
+    top: -145,
+    left: 180,
+    width: 180,
+    height: 180,
     backgroundColor: 'blue',
     borderRadius: 5,
     //borderWidth: 3,
@@ -123,7 +128,7 @@ const styles = StyleSheet.create({
   },
   pay_history: {
     top: -110,
-    left: 10,
+    left: 20,
     width: 130,
     height: 150,
     backgroundColor: 'blue',
@@ -134,7 +139,7 @@ const styles = StyleSheet.create({
   },
   adv_pay: {
     top: -260,
-    left: 150,
+    left: 160,
     width: 200,
     height: 150,
     backgroundColor: 'purple',
@@ -144,13 +149,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    top: 70,
+    top: 80,
     color: 'black',
     fontWeight: 'bold',
     fontSize: 16,
   },
   user: {
-    top: -120,
+    top: -150,
     backgroundColor: 'blue',
     width: 330,
     left: 14,
