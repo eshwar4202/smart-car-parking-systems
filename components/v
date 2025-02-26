@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 import { useNavigation } from '@react-navigation/native';
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 const supabaseUrl = 'https://velagnrotxuqhiczsczz.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbGFnbnJvdHh1cWhpY3pzY3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MjkxMjcsImV4cCI6MjA1NTIwNTEyN30.Xpr6wjdZdL6KN4gcZZ_q0aHOLpN3aAcG89uso0a_Fsw';
@@ -14,32 +13,28 @@ const SLOT_STATUS = {
   OCCUPIED: 'occupied',
 };
 
-const PRICE_PER_SLOT = 200;
+const PRICE_PER_SLOT = 200; // Price in rupees
 const decks = ['Upper Deck', 'Lower Deck'];
 
 const SmartParkingSystem = ({ route }) => {
   const { session } = route.params;
   const [slots, setSlots] = useState([]);
   const [selectedSlots, setSelectedSlots] = useState([]);
-  const [userId, setUserId] = useState(null);
+  const [userId, setUserId] = useState(null); // State to store the user's UUID
   const navigation = useNavigation();
 
-  // State for date/time pickers
-  const [isFromPickerVisible, setFromPickerVisible] = useState(false);
-  const [isToPickerVisible, setToPickerVisible] = useState(false);
-  const [fromTime, setFromTime] = useState(new Date());
-  const [toTime, setToTime] = useState(new Date());
-
   useEffect(() => {
+    // Fetch slots and set userId from the session prop
     fetchSlots();
     if (session && session.user) {
-      setUserId(session.user.id);
-      console.log('User ID in SmartParkingSystem:', session.user.id);
+      setUserId(session.user.id); // Set userId from the passed session
+      console.log('User ID in SmartParkingSystem:', session.user.id); // Should work
     } else {
       console.log('No session in SmartParkingSystem');
     }
   }, [session]);
 
+  // Fetch slots from Supabase
   const fetchSlots = async () => {
     try {
       const { data, error } = await supabase
@@ -48,9 +43,14 @@ const SmartParkingSystem = ({ route }) => {
         .order('id');
 
       if (error) throw error;
+
+      console.log('Raw Fetched Data:', data);
+
       const validData = (data || []).filter(
         (slot) => slot.id && slot.deck && slot.status
       );
+
+      console.log('Fetched and Validated Slots:', validData);
       setSlots(validData);
     } catch (err) {
       console.error('Fetch Slots Error:', err);
@@ -58,20 +58,20 @@ const SmartParkingSystem = ({ route }) => {
     }
   };
 
+  // Update slot status and UUID
   const updateSlot = async (slotId, newStatus) => {
     try {
+      console.log('Updating Slot ID:', slotId, 'to Status:', newStatus);
+
       const updateData = {
         status: newStatus,
       };
 
+      // If reserving a slot, include the current user's UUID
       if (newStatus === SLOT_STATUS.RESERVED && userId) {
         updateData.uid = userId;
-        updateData.from = fromTime.toISOString();
-        updateData.to = toTime.toISOString();
       } else if (newStatus === SLOT_STATUS.EMPTY) {
-        updateData.uid = null;
-        updateData.from = null;
-        updateData.to = null;
+        updateData.uid = null; // Clear UUID if slot is set back to empty
       }
 
       const { data, error } = await supabase
@@ -81,6 +81,7 @@ const SmartParkingSystem = ({ route }) => {
         .select('*');
 
       if (error) throw error;
+
       if (!data || data.length === 0) {
         throw new Error('No matching slot found to update.');
       }
@@ -97,13 +98,14 @@ const SmartParkingSystem = ({ route }) => {
         setSelectedSlots((prev) => prev.filter((id) => id !== slotId));
       }
 
-      fetchSlots();
+      fetchSlots(); // Refresh slots after update
     } catch (err) {
       console.error('Update Slot Error:', err);
       Alert.alert('Error', err.message || 'Failed to update the slot status.');
     }
   };
 
+  // Handle slot press
   const handleSlotPress = (slot) => {
     if (!userId) {
       Alert.alert('Error', 'You must be logged in to reserve a slot.');
@@ -111,7 +113,7 @@ const SmartParkingSystem = ({ route }) => {
     }
 
     if (slot.status === SLOT_STATUS.EMPTY) {
-      setFromPickerVisible(true); // Show from picker first
+      updateSlot(slot.id, SLOT_STATUS.RESERVED);
     } else if (slot.status === SLOT_STATUS.RESERVED) {
       if (selectedSlots.includes(slot.id)) {
         updateSlot(slot.id, SLOT_STATUS.EMPTY);
@@ -123,26 +125,7 @@ const SmartParkingSystem = ({ route }) => {
     }
   };
 
-  const handleFromConfirm = (date) => {
-    setFromPickerVisible(false);
-    setFromTime(date);
-    setToPickerVisible(true); // Show to picker after from is selected
-  };
-
-  const handleToConfirm = (date) => {
-    setToPickerVisible(false);
-    setToTime(date);
-    if (date <= fromTime) {
-      Alert.alert('Error', 'End time must be after start time.');
-      return;
-    }
-    // Find the slot that was clicked last (assuming it's the only one being booked)
-    const slotId = slots.find(slot => slot.status === SLOT_STATUS.EMPTY)?.id;
-    if (slotId) {
-      updateSlot(slotId, SLOT_STATUS.RESERVED);
-    }
-  };
-
+  // Navigate to payment page
   const goToPayment = () => {
     if (selectedSlots.length === 0) {
       Alert.alert('No Slots Selected', 'Please select at least one parking slot.');
@@ -150,16 +133,16 @@ const SmartParkingSystem = ({ route }) => {
     }
 
     const totalAmount = selectedSlots.length * PRICE_PER_SLOT;
+
     navigation.navigate('Payment', {
       slots: selectedSlots,
       amount: totalAmount,
       pricePerSlot: PRICE_PER_SLOT,
       session: session,
-      fromTime: fromTime.toISOString(),
-      toTime: toTime.toISOString(),
     });
   };
 
+  // Render each slot
   const renderSlot = ({ item }) => (
     <TouchableOpacity
       style={[
@@ -171,24 +154,37 @@ const SmartParkingSystem = ({ route }) => {
     >
       <Text style={styles.slotText}>{item.id}</Text>
       {(() => {
-        if (item.profiles && item.uid !== userId) {
-          return <Text style={styles.slotInfo}>Booked</Text>;
-        } else if (item.uid === userId) {
-          return <Text style={styles.slotInfo}>Booked by you</Text>;
-        } else if (!item.profiles && item.status === SLOT_STATUS.OCCUPIED) {
-          return <Text style={styles.slotInfo}>Booked</Text>;
+        if (item.profiles && item.uid != userId) {
+          return (
+            <Text style={styles.slotInfo}>
+              Booked
+            </Text>
+          );
+        } else if (item.uid == userId) {
+          return (
+            <Text style={styles.slotInfo}>Booked by you</Text>
+          )
+        }
+        else if (!item.profiles && item.status === SLOT_STATUS.OCCUPIED) {
+          return (
+            <Text style={styles.slotInfo}>Booked</Text>
+          );
         } else {
-          return <Text style={styles.slotInfo}>Available</Text>;
+          return (
+            <Text style={styles.slotInfo}>Available</Text>
+          );
         }
       })()}
     </TouchableOpacity>
   );
 
+  // Determine slot style based on status
   const getSlotStyle = (status, slotUid) => {
     if (status === SLOT_STATUS.RESERVED && slotUid === userId) {
-      return styles.yourSlot;
+      return styles.yourSlot; // Green for slots reserved by the current user
     }
     switch (status) {
+
       case SLOT_STATUS.EMPTY:
         return styles.emptySlot;
       case SLOT_STATUS.RESERVED:
@@ -200,37 +196,25 @@ const SmartParkingSystem = ({ route }) => {
     }
   };
 
+  // Main render
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Pricing information */}
         <View style={styles.infoCard}>
           <Text style={styles.infoText}>Price per slot: ₹{PRICE_PER_SLOT}</Text>
           <Text style={styles.infoText}>
             Selected slots: {selectedSlots.length}
             {selectedSlots.length > 0 ? ` (₹${selectedSlots.length * PRICE_PER_SLOT})` : ''}
           </Text>
-          <TouchableOpacity
-            style={styles.timeButton}
-            onPress={() => setFromPickerVisible(true)}
-          >
-            <Text style={styles.timeButtonText}>
-              From: {fromTime.toLocaleString()}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.timeButton}
-            onPress={() => setToPickerVisible(true)}
-          >
-            <Text style={styles.timeButtonText}>
-              To: {toTime.toLocaleString()}
-            </Text>
-          </TouchableOpacity>
         </View>
 
+        {/* Slot display */}
         {decks.map((deck) => {
           const filteredSlots = slots.filter(
             (slot) => slot.deck.trim().toLowerCase() === deck.trim().toLowerCase()
           );
+
           return (
             <View key={deck} style={styles.deck}>
               <Text style={styles.deckTitle}>{deck}</Text>
@@ -249,21 +233,7 @@ const SmartParkingSystem = ({ route }) => {
         })}
       </ScrollView>
 
-      <DateTimePickerModal
-        isVisible={isFromPickerVisible}
-        mode="datetime"
-        onConfirm={handleFromConfirm}
-        onCancel={() => setFromPickerVisible(false)}
-        date={fromTime}
-      />
-      <DateTimePickerModal
-        isVisible={isToPickerVisible}
-        mode="datetime"
-        onConfirm={handleToConfirm}
-        onCancel={() => setToPickerVisible(false)}
-        date={toTime}
-      />
-
+      {/* Payment button - positioned absolutely */}
       {selectedSlots.length > 0 && (
         <View style={styles.paymentButtonContainer}>
           <TouchableOpacity style={styles.paymentButton} onPress={goToPayment}>
@@ -277,6 +247,7 @@ const SmartParkingSystem = ({ route }) => {
   );
 };
 
+// Styles (unchanged)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -296,16 +267,6 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 16,
     marginBottom: 5,
-  },
-  timeButton: {
-    backgroundColor: '#e0e0e0',
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 10,
-  },
-  timeButtonText: {
-    fontSize: 14,
-    color: '#333',
   },
   deck: {
     marginVertical: 10,

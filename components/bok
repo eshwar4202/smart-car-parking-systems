@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity } from "react-native";
 import { supabase } from "../lib/supabase";
@@ -28,9 +29,9 @@ export default function ParkingSlots({ route }) {
     try {
       const { data, error } = await supabase
         .from("parking_slots")
-        .select("id, deck, status, uid, from, to") // Added from and to
+        .select("id, deck, status, uid")
         .eq("uid", userId)
-        .neq("status", "cancelled")
+        .neq("status", "cancelled") // Ensure cancelled slots are not fetched
         .order("id", { ascending: true });
 
       if (error) throw error;
@@ -55,12 +56,12 @@ export default function ParkingSlots({ route }) {
             try {
               const { error } = await supabase
                 .from("parking_slots")
-                .update({ status: "empty", uid: null, from: null, to: null }) // Clear timestamps too
+                .update({ status: "empty", uid: null }) // Mark slot as cancelled
                 .eq("id", slotId)
                 .eq("uid", userId);
 
               if (error) throw error;
-              fetchParkingSlots();
+              fetchParkingSlots(); // Refresh the list after cancellation
             } catch (err) {
               console.error("Error cancelling slot:", err);
             }
@@ -95,12 +96,6 @@ export default function ParkingSlots({ route }) {
 function ParkingSlotCard({ slot, navigation, onCancel }) {
   const isOccupied = slot.status === "reserved";
 
-  // Format timestamps for display
-  const formatDateTime = (timestamp) => {
-    if (!timestamp) return "Not set";
-    return new Date(timestamp).toLocaleString();
-  };
-
   return (
     <TouchableOpacity
       style={[styles.card, isOccupied ? styles.occupied : styles.available]}
@@ -113,8 +108,6 @@ function ParkingSlotCard({ slot, navigation, onCancel }) {
       <View style={styles.cardText}>
         <Text style={styles.slotNumber}>Slot {slot.id} ({slot.deck})</Text>
         <Text style={styles.statusText}>{isOccupied ? "Booked" : "Available"}</Text>
-        <Text style={styles.timeText}>From: {formatDateTime(slot.from)}</Text>
-        <Text style={styles.timeText}>To: {formatDateTime(slot.to)}</Text>
       </View>
 
       {isOccupied && (
@@ -126,6 +119,7 @@ function ParkingSlotCard({ slot, navigation, onCancel }) {
   );
 }
 
+// Styles
 const styles = StyleSheet.create({
   loaderContainer: {
     flex: 1,
@@ -164,16 +158,10 @@ const styles = StyleSheet.create({
   slotNumber: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 4,
   },
   statusText: {
     fontSize: 14,
     color: "gray",
-    marginBottom: 4,
-  },
-  timeText: {
-    fontSize: 12,
-    color: "#333",
   },
   cancelButton: {
     width: 30,
@@ -189,3 +177,5 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+
+
