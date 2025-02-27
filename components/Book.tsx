@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  Button
+} from "react-native";
 import { supabase } from "../lib/supabase";
 import { Svg, Circle } from "react-native-svg";
 import { useNavigation } from "@react-navigation/native";
@@ -10,6 +21,9 @@ export default function ParkingSlots({ route }) {
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
   const [userId, setUserId] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedSlotId, setSelectedSlotId] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   useEffect(() => {
     if (session && session.user) {
@@ -28,7 +42,7 @@ export default function ParkingSlots({ route }) {
     try {
       const { data, error } = await supabase
         .from("parking_slots")
-        .select("id, deck, status, uid, from, to") // Added from and to
+        .select("id, deck, status, uid, from, to")
         .eq("uid", userId)
         .neq("status", "cancelled")
         .order("id", { ascending: true });
@@ -44,30 +58,85 @@ export default function ParkingSlots({ route }) {
   }
 
   async function cancelSlot(slotId) {
-    Alert.alert(
-      "Cancel Booking",
-      "Are you sure you want to cancel this slot?",
-      [
-        { text: "No", style: "cancel" },
-        {
-          text: "Yes",
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from("parking_slots")
-                .update({ status: "empty", uid: null, from: null, to: null }) // Clear timestamps too
-                .eq("id", slotId)
-                .eq("uid", userId);
+    setSelectedSlotId(slotId);
+    setShowCancelModal(true);
+  }
 
-              if (error) throw error;
-              fetchParkingSlots();
-            } catch (err) {
-              console.error("Error cancelling slot:", err);
-            }
-          },
-        },
-      ]
-    );
+  async function handleCancelConfirmation() {
+    if (!cancelReason.trim()) {
+      Alert.alert("Error", "Please provide a reason for cancellation");
+      return;
+    }
+
+    try {
+      // Check if wallet exists
+      let { data: walletData, error: walletError } = await supabase
+        .from("wallets")
+        .select("balance")
+        .eq("user_id", userId)
+        .single();
+
+      if (walletError && walletError.code === "PGRST116") {
+        // Wallet doesn't exist, create one with initial balance
+        const { data: newWallet, error: createError } = await supabase
+          .from("wallets")
+          .insert({ user_id: userId, balance: 100 })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        walletData = newWallet;
+      } else if (walletError) {
+        throw walletError;
+      }
+
+      if (!walletData || walletData.balance < 10) {
+        Alert.alert("Error", "Insufficient balance in your wallet");
+        return;
+      }
+
+      // Update parking slot
+      const { error: slotError } = await supabase
+        .from("parking_slots")
+        .update({ status: "empty", uid: null, from: null, to: null })
+        .eq("id", selectedSlotId)
+        .eq("uid", userId);
+
+      if (slotError) throw slotError;
+
+      // Deduct from wallet
+      const { error: deductError } = await supabase
+        .from("wallets")
+        .update({ balance: walletData.balance - 10 })
+        .eq("user_id", userId);
+
+      if (deductError) throw deductError;
+
+      // Insert cancellation record
+      const { error: cancelError } = await supabase
+        .from("cancel")
+        .insert({
+          user_id: userId,
+          message: cancelReason,
+          slot_id: selectedSlotId,
+          created_at: new Date().toISOString()
+        });
+
+      if (cancelError) throw cancelError;
+
+      Alert.alert(
+        "Cancellation Successful",
+        "Deducted Rs 10 from your wallet",
+        [{ text: "OK", onPress: () => fetchParkingSlots() }]
+      );
+
+      setShowCancelModal(false);
+      setCancelReason("");
+      setSelectedSlotId(null);
+    } catch (err) {
+      console.error("Error cancelling slot:", err);
+      Alert.alert("Error", "Failed to cancel slot. Please try again.");
+    }
   }
 
   if (loading) {
@@ -80,22 +149,61 @@ export default function ParkingSlots({ route }) {
   }
 
   return (
-    <FlatList
-      data={parkingSlots}
-      keyExtractor={(item) => item.id.toString()}
-      renderItem={({ item }) => (
-        <ParkingSlotCard slot={item} navigation={navigation} onCancel={cancelSlot} />
-      )}
-      contentContainerStyle={styles.listContainer}
-      ListEmptyComponent={<Text>No booked slots found</Text>}
-    />
+    <>
+      <FlatList
+        data={parkingSlots}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <ParkingSlotCard slot={item} navigation={navigation} onCancel={cancelSlot} />
+        )}
+        contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={<Text>No booked slots found</Text>}
+      />
+
+      <Modal
+        visible={showCancelModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCancelModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Cancel Booking</Text>
+            <Text style={styles.modalSubtitle}>
+              Please provide a reason for cancellation (Rs 10 will be deducted):
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter cancellation reason"
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              multiline
+            />
+            <View style={styles.modalButtons}>
+              <Button
+                title="Cancel"
+                onPress={() => {
+                  setShowCancelModal(false);
+                  setCancelReason("");
+                }}
+                color="#gray"
+              />
+              <Button
+                title="Confirm"
+                onPress={handleCancelConfirmation}
+                color="#007BFF"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
 function ParkingSlotCard({ slot, navigation, onCancel }) {
   const isOccupied = slot.status === "reserved";
 
-  // Format timestamps for display
   const formatDateTime = (timestamp) => {
     if (!timestamp) return "Not set";
     return new Date(timestamp).toLocaleString();
@@ -187,5 +295,41 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 10,
+    width: "80%",
+    maxHeight: "60%",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    marginBottom: 15,
+    color: "gray",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 5,
+    padding: 10,
+    minHeight: 100,
+    marginBottom: 20,
+    textAlignVertical: "top",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
 });

@@ -1,0 +1,287 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Alert,
+  TouchableOpacity,
+  Text,
+  Animated,
+  PanResponder,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
+import { supabase } from '../lib/supabase';
+import { Session } from '@supabase/supabase-js';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import Map from './Map';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+
+export default function Account({ session }: { session: Session }) {
+  const [loading, setLoading] = useState(true);
+  const [username, setUsername] = useState('');
+  const [website, setWebsite] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const mapScale = useState(new Animated.Value(1))[0];
+  const slideAnim = useState(new Animated.Value(0))[0];
+
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    if (session) getProfile();
+  }, [session]);
+
+  async function getProfile() {
+    try {
+      setLoading(true);
+      if (!session?.user) throw new Error('No user on the session!');
+
+      const { data, error, status } = await supabase
+        .from('profiles')
+        .select('username, website, avatar_url')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error && status !== 406) throw error;
+
+      if (data) {
+        setUsername(data.username || '');
+        setWebsite(data.website || '');
+        setAvatarUrl(data.avatar_url || '');
+      }
+    } catch (error) {
+      if (error instanceof Error) Alert.alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useFocusEffect(() => {
+    slideAnim.setValue(0);
+  });
+
+  const panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderMove: (event, gesture) => {
+      let newX = Math.min(Math.max(0, gesture.dx), 250);
+      slideAnim.setValue(newX);
+    },
+    onPanResponderRelease: () => {
+      if (slideAnim._value >= 200) {
+        navigation.navigate('Dashboard');
+      } else {
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: false,
+        }).start();
+      }
+    },
+  });
+
+  async function handleSignOut() {
+    const { error } = await supabase.auth.signOut();
+    if (error) Alert.alert('Sign Out Error', error.message);
+    else console.log('Successfully signed out!');
+  }
+
+  // Show loading spinner while fetching data
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#3498db" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Header with Icon */}
+      <View style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Icon name="local-parking" size={28} color="#fff" style={{ marginRight: 10 }} />
+          <Text style={styles.headerText}>Parking System</Text>
+        </View>
+        <Text style={styles.subHeaderText}>Welcome, {username || 'User'}</Text>
+      </View>
+
+      {/* Animated Map */}
+      <Animated.View style={[styles.mapContainer, { transform: [{ scale: mapScale }] }]}>
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          onPress={() => navigation.navigate('Map')}
+          onPressIn={() => {
+            Animated.spring(mapScale, { toValue: 0.98, useNativeDriver: true }).start();
+          }}
+          onPressOut={() => {
+            Animated.spring(mapScale, { toValue: 1, useNativeDriver: true }).start();
+          }}
+          accessibilityLabel="View Map"
+        >
+          <Map />
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Grid of Feature Buttons */}
+      <View style={styles.gridContainer}>
+        <GridButton
+          icon="event"
+          title="Booked Slots"
+          onPress={() => navigation.navigate('Book')}
+        />
+        <GridButton
+          icon="build"
+          title="Services"
+          onPress={() => navigation.navigate('Service')}
+        />
+        <GridButton
+          icon="history"
+          title="Pay History"
+          onPress={() => navigation.navigate('Pay_hist')}
+        />
+        <GridButton
+          icon="account-balance-wallet"
+          title="E-Wallet"
+          onPress={() => navigation.navigate('EWallet')}
+        />
+      </View>
+
+      {/* Slider with Color Animation */}
+      <Animated.View
+        style={[
+          styles.sliderContainer,
+          {
+            backgroundColor: slideAnim.interpolate({
+              inputRange: [0, 250],
+              outputRange: ['#17a2b8', '#28a745'],
+            }),
+          },
+        ]}
+      >
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={[styles.sliderHandle, { transform: [{ translateX: slideAnim }] }]}
+        />
+        <Text style={styles.sliderText}>Slide to Dashboard</Text>
+      </Animated.View>
+
+      {/* Sign-Out Button */}
+      <TouchableOpacity
+        style={styles.signOutButton}
+        onPress={handleSignOut}
+        activeOpacity={0.8}
+        accessibilityLabel="Sign Out"
+      >
+        <Text style={styles.signOutText}>Sign Out</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// Grid Button Component
+const GridButton = ({ icon, title, onPress }) => (
+  <TouchableOpacity
+    style={styles.gridItem}
+    onPress={onPress}
+    activeOpacity={0.8}
+    accessibilityLabel={title}
+  >
+    <Icon name={icon} size={28} color="#3498db" />
+    <Text style={styles.gridText}>{title}</Text>
+  </TouchableOpacity>
+);
+
+// Styles
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+  },
+  header: {
+    backgroundColor: '#1a2a44',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 20,
+    elevation: 2,
+  },
+  headerText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '600',
+  },
+  subHeaderText: {
+    color: '#b0b8c4',
+    fontSize: 14,
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  mapContainer: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 20,
+    backgroundColor: '#fff',
+    elevation: 3,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  gridItem: {
+    width: '48%',
+    height: 100,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  gridText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 8,
+  },
+  sliderContainer: {
+    height: 50,
+    borderRadius: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    marginBottom: 20,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  sliderHandle: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    elevation: 1,
+  },
+  sliderText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 15,
+  },
+  signOutButton: {
+    backgroundColor: '#dc3545',
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 25,
+    alignSelf: 'center',
+    elevation: 2,
+  },
+  signOutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

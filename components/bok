@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity } from "react-native";
 import { supabase } from "../lib/supabase";
@@ -29,9 +28,9 @@ export default function ParkingSlots({ route }) {
     try {
       const { data, error } = await supabase
         .from("parking_slots")
-        .select("id, deck, status, uid")
+        .select("id, deck, status, uid, from, to")
         .eq("uid", userId)
-        .neq("status", "cancelled") // Ensure cancelled slots are not fetched
+        .neq("status", "cancelled")
         .order("id", { ascending: true });
 
       if (error) throw error;
@@ -47,23 +46,64 @@ export default function ParkingSlots({ route }) {
   async function cancelSlot(slotId) {
     Alert.alert(
       "Cancel Booking",
-      "Are you sure you want to cancel this slot?",
+      "Are you sure you want to cancel this slot? Rs 10 will be deducted from your wallet.",
       [
         { text: "No", style: "cancel" },
         {
           text: "Yes",
           onPress: async () => {
             try {
-              const { error } = await supabase
+              // Check if wallet exists
+              let { data: walletData, error: walletError } = await supabase
+                .from("wallets")
+                .select("balance")
+                .eq("user_id", userId)
+                .single();
+
+              if (walletError && walletError.code === "PGRST116") {
+                // Wallet doesn't exist, create one with initial balance
+                const { data: newWallet, error: createError } = await supabase
+                  .from("wallets")
+                  .insert({ user_id: userId, balance: 100 }) // Starting with Rs 100, adjust as needed
+                  .select()
+                  .single();
+
+                if (createError) throw createError;
+                walletData = newWallet;
+              } else if (walletError) {
+                throw walletError;
+              }
+
+              if (!walletData || walletData.balance < 10) {
+                Alert.alert("Error", "Insufficient balance in your wallet");
+                return;
+              }
+
+              // Update parking slot
+              const { error: slotError } = await supabase
                 .from("parking_slots")
-                .update({ status: "empty", uid: null }) // Mark slot as cancelled
+                .update({ status: "empty", uid: null, from: null, to: null })
                 .eq("id", slotId)
                 .eq("uid", userId);
 
-              if (error) throw error;
-              fetchParkingSlots(); // Refresh the list after cancellation
+              if (slotError) throw slotError;
+
+              // Deduct from wallet
+              const { error: deductError } = await supabase
+                .from("wallets")
+                .update({ balance: walletData.balance - 10 })
+                .eq("user_id", userId);
+
+              if (deductError) throw deductError;
+
+              Alert.alert(
+                "Cancellation Successful",
+                "Detected Rs 10 from your wallet",
+                [{ text: "OK", onPress: () => fetchParkingSlots() }]
+              );
             } catch (err) {
               console.error("Error cancelling slot:", err);
+              Alert.alert("Error", "Failed to cancel slot. Please try again.");
             }
           },
         },
@@ -93,8 +133,14 @@ export default function ParkingSlots({ route }) {
   );
 }
 
+// ParkingSlotCard component remains unchanged
 function ParkingSlotCard({ slot, navigation, onCancel }) {
   const isOccupied = slot.status === "reserved";
+
+  const formatDateTime = (timestamp) => {
+    if (!timestamp) return "Not set";
+    return new Date(timestamp).toLocaleString();
+  };
 
   return (
     <TouchableOpacity
@@ -108,6 +154,8 @@ function ParkingSlotCard({ slot, navigation, onCancel }) {
       <View style={styles.cardText}>
         <Text style={styles.slotNumber}>Slot {slot.id} ({slot.deck})</Text>
         <Text style={styles.statusText}>{isOccupied ? "Booked" : "Available"}</Text>
+        <Text style={styles.timeText}>From: {formatDateTime(slot.from)}</Text>
+        <Text style={styles.timeText}>To: {formatDateTime(slot.to)}</Text>
       </View>
 
       {isOccupied && (
@@ -119,7 +167,7 @@ function ParkingSlotCard({ slot, navigation, onCancel }) {
   );
 }
 
-// Styles
+// Styles remain unchanged
 const styles = StyleSheet.create({
   loaderContainer: {
     flex: 1,
@@ -158,10 +206,16 @@ const styles = StyleSheet.create({
   slotNumber: {
     fontSize: 18,
     fontWeight: "bold",
+    marginBottom: 4,
   },
   statusText: {
     fontSize: 14,
     color: "gray",
+    marginBottom: 4,
+  },
+  timeText: {
+    fontSize: 12,
+    color: "#333",
   },
   cancelButton: {
     width: 30,
@@ -177,5 +231,3 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
-
-

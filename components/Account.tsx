@@ -22,16 +22,14 @@ export default function Account({ session }: { session: Session }) {
   const [avatarUrl, setAvatarUrl] = useState('');
 
   const navigation = useNavigation();
-  const slideAnim = useState(new Animated.Value(0))[0]; // For the slide-to-dashboard animation
+  const slideAnim = useState(new Animated.Value(0))[0];
 
-  // Fetch profile whenever session changes
   useEffect(() => {
     if (session) {
       getProfile();
     }
   }, [session]);
 
-  // Fetch user profile from 'profiles' table
   async function getProfile() {
     try {
       setLoading(true);
@@ -61,12 +59,10 @@ export default function Account({ session }: { session: Session }) {
     }
   }
 
-  // Reset arrow position whenever page gains focus
   useFocusEffect(() => {
     slideAnim.setValue(0);
   });
 
-  // PanResponder for the green 'Dashboard' arrow
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: () => true,
     onPanResponderMove: (event, gesture) => {
@@ -85,81 +81,112 @@ export default function Account({ session }: { session: Session }) {
     },
   });
 
-  // Sign out function
   async function handleSignOut() {
     const { error } = await supabase.auth.signOut();
     if (error) {
       Alert.alert('Sign Out Error', error.message);
     } else {
       console.log('Successfully signed out!');
-      // The 'onAuthStateChange' in App.tsx will redirect to Auth screen automatically
     }
   }
 
   return (
-    <View style={styles.app}>
-      {/* MAP */}
-      <TouchableOpacity style={styles.map} onPress={() => navigation.navigate('Map')}>
+    <View style={styles.container}>
+      {/* Header Section */}
+      <View style={styles.header}>
+        <Text style={styles.headerText}>Parking System</Text>
+      </View>
+
+      {/* Map Section */}
+      <TouchableOpacity
+        style={styles.mapContainer}
+        onPress={() => navigation.navigate('Map')}
+      >
         <Map />
       </TouchableOpacity>
 
-      {/* Booked */}
-      <TouchableOpacity onPress={() => navigation.navigate('Book')}>
-        <ImageBackground
-          source={require('../assets/book.jpg')}
-          resizeMode="cover"
-          style={styles.booked}
+      {/* Main Buttons Grid */}
+      <View style={styles.gridContainer}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Book')}
+          style={styles.gridItem}
         >
-          <Text style={styles.buttonText}>Booked</Text>
-        </ImageBackground>
-      </TouchableOpacity>
+          <ImageBackground
+            source={require('../assets/book.jpg')}
+            resizeMode="cover"
+            style={styles.gridImage}
+          >
+            <View style={styles.gridOverlay}>
+              <Text style={styles.gridText}>Booked Slots</Text>
+            </View>
+          </ImageBackground>
+        </TouchableOpacity>
 
-      {/* Services */}
-      <TouchableOpacity onPress={() => navigation.navigate('Service')}>
-        <ImageBackground
-          source={require('../assets/service.jpg')}
-          resizeMode="cover"
-          style={styles.service}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Service')}
+          style={styles.gridItem}
         >
-          <Text style={styles.buttonText}>Services</Text>
-        </ImageBackground>
-      </TouchableOpacity>
+          <ImageBackground
+            source={require('../assets/service.jpg')}
+            resizeMode="cover"
+            style={styles.gridImage}
+          >
+            <View style={styles.gridOverlay}>
+              <Text style={styles.gridText}>Services</Text>
+            </View>
+          </ImageBackground>
+        </TouchableOpacity>
 
-      {/* Pay History */}
-      <TouchableOpacity onPress={() => navigation.navigate('Pay_hist')}>
-        <ImageBackground
-          source={require('../assets/pay.jpg')}
-          resizeMode="cover"
-          style={styles.pay_history}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Pay_hist')}
+          style={styles.gridItem}
         >
-          <Text style={styles.buttonText}>Pay History</Text>
-        </ImageBackground>
-      </TouchableOpacity>
+          <ImageBackground
+            source={require('../assets/pay.jpg')}
+            resizeMode="cover"
+            style={styles.gridImage}
+          >
+            <View style={styles.gridOverlay}>
+              <Text style={styles.gridText}>Pay History</Text>
+            </View>
+          </ImageBackground>
+        </TouchableOpacity>
 
-      {/* Advance Pay */}
-      <TouchableOpacity onPress={() => navigation.navigate('EWallet')}>
-        <ImageBackground
-          source={require('../assets/adv_pay.jpg')}
-          resizeMode="cover"
-          style={styles.adv_pay}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('EWallet')}
+          style={styles.gridItem}
         >
-          <Text style={styles.buttonText}>E-Wallet</Text>
-        </ImageBackground>
-      </TouchableOpacity>
+          <ImageBackground
+            source={require('../assets/adv_pay.jpg')}
+            resizeMode="cover"
+            style={styles.gridImage}
+          >
+            <View style={styles.gridOverlay}>
+              <Text style={styles.gridText}>E-Wallet</Text>
+            </View>
+          </ImageBackground>
+        </TouchableOpacity>
+      </View>
 
-      {/* Sliding Arrow Button - Dashboard Navigation */}
-      <View style={styles.dashboardButton}>
-        <Text style={styles.dashboardText}>Dashboard</Text>
+      {/* Dashboard Slider */}
+      <View style={styles.sliderContainer}>
         <Animated.View
           {...panResponder.panHandlers}
-          style={[styles.arrow, { transform: [{ translateX: slideAnim }] }]}
+          style={[
+            styles.sliderHandle,
+            { transform: [{ translateX: slideAnim }] }
+          ]}
         >
-          <Text style={styles.arrowText}>{'>'}</Text>
+          <Text style={styles.sliderArrow}>→</Text>
         </Animated.View>
+        <Text style={styles.sliderText}>Slide to Dashboard</Text>
       </View>
 
       {/* Sign Out Button */}
-      <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+      <TouchableOpacity
+        style={styles.signOutButton}
+        onPress={handleSignOut}
+      >
         <Text style={styles.signOutText}>Sign Out</Text>
       </TouchableOpacity>
     </View>
@@ -167,114 +194,112 @@ export default function Account({ session }: { session: Session }) {
 }
 
 const styles = StyleSheet.create({
-  app: {
-    backgroundColor: 'white',
+  container: {
     flex: 1,
+    backgroundColor: '#f5f6fa',
+    padding: 15,
   },
-  map: {
-    top: 20,
-    left: 10,
-    width: 340,
+  header: {
+    backgroundColor: '#2c3e50',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginBottom: 15,
+    elevation: 4,
+  },
+  headerText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  mapContainer: {
+    width: '100%',
     height: 200,
-    borderRadius: 5,
-    elevation: 10,
-  },
-  booked: {
-    top: 35,
-    left: 10,
-    width: 180,
-    height: 180,
-    backgroundColor: 'blue',
-    borderRadius: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  service: {
-    top: -145,
-    left: 180,
-    width: 180,
-    height: 180,
-    backgroundColor: 'blue',
-    borderRadius: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pay_history: {
-    top: -110,
-    left: 20,
-    width: 130,
-    height: 150,
-    backgroundColor: 'blue',
-    borderRadius: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  adv_pay: {
-    top: -260,
-    left: 160,
-    width: 200,
-    height: 150,
-    backgroundColor: 'purple',
-    borderRadius: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonText: {
-    top: 80,
-    color: 'black',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  // Dashboard
-  dashboardButton: {
-    top: -150,
-    backgroundColor: 'green',
-    width: 330,
-    left: 14,
-    height: 50,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    paddingHorizontal: 10,
+    borderRadius: 15,
     overflow: 'hidden',
+    marginBottom: 20,
+    elevation: 6,
+    backgroundColor: '#fff',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  gridItem: {
+    width: '48%',
+    height: 120,
+    marginBottom: 15,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 4,
+  },
+  gridImage: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
+  },
+  sliderContainer: {
+    backgroundColor: '#3498db',
+    height: 60,
+    borderRadius: 30,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 15,
+    marginBottom: 20,
+    elevation: 4,
+    overflow: 'hidden',
   },
-  dashboardText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 20,
-  },
-  arrow: {
-    width: 40,
-    height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderRadius: 20,
+  sliderHandle: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#fff',
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'absolute',
-    left: 10,
+    elevation: 2,
   },
-  arrowText: {
-    fontSize: 22,
+  sliderArrow: {
+    fontSize: 24,
+    color: '#3498db',
     fontWeight: 'bold',
-    color: 'black',
   },
-  // Sign Out Button
+  sliderText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 20,
+  },
   signOutButton: {
-    position: 'absolute',
-    bottom: 40,
-    left: 20,
-    backgroundColor: 'red',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    elevation: 5,
+    backgroundColor: '#e74c3c',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    alignSelf: 'center',
+    elevation: 4,
   },
   signOutText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
