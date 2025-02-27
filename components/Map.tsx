@@ -47,7 +47,7 @@ export default function MapScreen() {
             }}
             title="Parking 1"
             description="This is a Parking Location"
-            onPress={() => navigation.navigate('visual')}
+            onPress={() => navigation.navigate('Visualization')}
           />
         </MapView>
       ) : (

@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Alert } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { createClient } from '@supabase/supabase-js';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 // Supabase Configuration
 const supabaseUrl = 'https://velagnrotxuqhiczsczz.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbGFnbnJvdHh1cWhpY3pzY3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MjkxMjcsImV4cCI6MjA1NTIwNTEyN30.Xpr6wjdZdL6KN4gcZZ_q0aHOLpN3aAcG89uso0a_Fsw';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbGFnbnJvdHh1cWhpY3pzY3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MjkxMjcsImV4cCI6MjA1NTIwNTEyN30.Xpr6wjdZdL6KN4gcZZ_q0aHOLpN3aAcG89uso0a_Fsw';  // Replace with your actual Supabase anon key
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// List of Services
+// List of Available Services
 const services = [
   { id: 1, name: 'Car Wash', description: 'Complete exterior and interior car wash.' },
   { id: 2, name: 'Oil Change', description: 'Quick oil change service with quality oil.' },
@@ -17,45 +17,58 @@ const services = [
   { id: 4, name: 'Brake Repair', description: 'Professional brake repair and maintenance service.' },
 ];
 
-const ServiceBooking = () => {
-  const [selectedService, setSelectedService] = useState(null);
-  const [date, setDate] = useState(new Date());
-  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+export default function ServiceBooking() {
   const navigation = useNavigation();
+  const route = useRoute();
 
-  // Function to book a service
-  const bookService = async () => {
+  // Get session from route params (passed from navigation)
+  const session = route.params?.session || null;
+  const userId = session?.user?.id || null;
+
+  const [selectedService, setSelectedService] = useState<{ id: number; name: string; description: string } | null>(null);
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  // Called when user taps 'Book Service'
+  const handleBookPress = () => {
     if (!selectedService) {
-      Alert.alert('Error', 'Please select a service.');
+      Alert.alert('Error', 'Please select a service first.');
       return;
     }
-
-    try {
-      const { data, error } = await supabase.from('service_bookings').insert([
-        {
-          service_name: selectedService.name,
-          date_time: date.toISOString(),
-        },
-      ]);
-
-      if (error) throw error;
-      Alert.alert('Success', 'Service booked successfully!');
-    } catch (err) {
-      Alert.alert('Error', 'Failed to book service.');
-    }
-  };
-
-  const showDatePicker = () => {
     setDatePickerVisibility(true);
   };
 
-  const hideDatePicker = () => {
+  // Called once user confirms date/time
+  const handleConfirm = async (pickedDate: Date) => {
     setDatePickerVisibility(false);
-  };
+    setSelectedDate(pickedDate);
 
-  const handleConfirm = (selectedDate) => {
-    hideDatePicker();
-    if (selectedDate) setDate(selectedDate);
+    // Convert picked date to local time before inserting
+    const localDateTime = new Date(pickedDate.getTime() - pickedDate.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 19)
+      .replace('T', ' '); // Format as "YYYY-MM-DD HH:MM:SS"
+
+    console.log("Selected Local Time:", localDateTime);
+
+    try {
+      const { data, error } = await supabase
+        .from('service_bookings')
+        .insert([
+          {
+            user_id: userId, // Save User ID if logged in
+            service_name: selectedService?.name,
+            date_time: localDateTime, // Store correctly formatted date-time
+          },
+        ]);
+
+      if (error) throw error;
+
+      Alert.alert('Success', `Service booked successfully for ${localDateTime}!`);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to book service.');
+      console.error("Booking Error:", err);
+    }
   };
 
   return (
@@ -76,28 +89,26 @@ const ServiceBooking = () => {
         )}
       />
 
-      <TouchableOpacity style={styles.dateButton} onPress={showDatePicker}>
-        <Text>Select Date & Time</Text>
-      </TouchableOpacity>
-
-      <DateTimePickerModal
-        isVisible={isDatePickerVisible}
-        mode="datetime"
-        date={date}
-        onConfirm={handleConfirm}
-        onCancel={hideDatePicker}
-      />
-
-      <TouchableOpacity style={styles.bookButton} onPress={bookService}>
+      {/* Book Service Button */}
+      <TouchableOpacity style={styles.bookButton} onPress={handleBookPress}>
         <Text style={styles.buttonText}>Book Service</Text>
       </TouchableOpacity>
 
+      {/* DateTime Picker (Shows after pressing Book Service) */}
+      <DateTimePickerModal
+        isVisible={isDatePickerVisible}
+        mode="datetime"
+        onConfirm={handleConfirm}
+        onCancel={() => setDatePickerVisibility(false)}
+      />
+
+      {/* FAQ Button */}
       <TouchableOpacity style={styles.faq} onPress={() => navigation.navigate('faq')}>
         <Text style={styles.buttonText}>FAQ</Text>
       </TouchableOpacity>
-    </View >
+    </View>
   );
-};
+}
 
 // Styles
 const styles = StyleSheet.create({
@@ -116,9 +127,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginVertical: 5,
     borderRadius: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
     elevation: 2,
   },
   selectedService: {
@@ -132,14 +140,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  dateButton: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#ddd',
+  bookButton: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#007bff',
     alignItems: 'center',
     borderRadius: 5,
   },
-  bookButton: {
+  faq: {
     marginTop: 20,
     padding: 15,
     backgroundColor: '#007bff',
@@ -150,15 +158,4 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
   },
-
-  faq: {
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: '#007bff',
-    alignItems: 'center',
-    borderRadius: 5,
-  },
-
 });
-
-export default ServiceBooking;
