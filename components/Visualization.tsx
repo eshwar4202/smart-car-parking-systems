@@ -22,6 +22,7 @@ const SmartParkingSystem = ({ route }) => {
   const [slots, setSlots] = useState([]);
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [userId, setUserId] = useState(null);
+  const [selectedSlotId, setSelectedSlotId] = useState(null);
   const navigation = useNavigation();
 
   // State for date/time pickers
@@ -111,6 +112,7 @@ const SmartParkingSystem = ({ route }) => {
     }
 
     if (slot.status === SLOT_STATUS.EMPTY) {
+      setSelectedSlotId(slot.id);
       setFromPickerVisible(true); // Show from picker first
     } else if (slot.status === SLOT_STATUS.RESERVED) {
       if (selectedSlots.includes(slot.id)) {
@@ -136,11 +138,14 @@ const SmartParkingSystem = ({ route }) => {
       Alert.alert('Error', 'End time must be after start time.');
       return;
     }
-    // Find the slot that was clicked last (assuming it's the only one being booked)
-    const slotId = slots.find(slot => slot.status === SLOT_STATUS.EMPTY)?.id;
-    if (slotId) {
-      updateSlot(slotId, SLOT_STATUS.RESERVED);
+
+
+    if (selectedSlotId) {
+      updateSlot(selectedSlotId, SLOT_STATUS.RESERVED);  // Use the clicked slot ID
+    } else {
+      Alert.alert('Error', 'No slot selected.');
     }
+    // Find the slot that was clicked last (assuming it's the only one being booked)
   };
 
   const goToPayment = () => {
