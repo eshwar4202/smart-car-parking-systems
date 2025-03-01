@@ -1,9 +1,13 @@
-// components/Auth.tsx
 import React, { useState } from 'react'
 import { Alert, StyleSheet, View, AppState, ScrollView } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { Button, Input } from '@rneui/themed'
+import * as Location from 'expo-location' // Add this import
+import { NavigationProp } from '@react-navigation/native';
 
+interface AuthProps {
+  navigation: NavigationProp<any>;
+}
 // Start/stop session auto-refresh based on app state
 AppState.addEventListener('change', (state) => {
   if (state === 'active') {
@@ -13,22 +17,90 @@ AppState.addEventListener('change', (state) => {
   }
 })
 
-export default function Auth() {
+export default function Auth({ navigation }: AuthProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false) // Toggle between Sign In / Sign Up
+  const [isSignUp, setIsSignUp] = useState(false)
 
-  // Sign in existing user
+  // Function to get current location
+  async function getCurrentLocation() {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Location permission is required')
+        return null
+      }
+
+      let location = await Location.getCurrentPositionAsync({})
+      return {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        timestamp: new Date().toISOString()
+      }
+    } catch (error) {
+      console.error('Error getting location:', error)
+      return null
+    }
+  }
+
+  // Sign in existing user with location check
   async function signInWithEmail() {
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const currentLocation = await getCurrentLocation()
+      if (!currentLocation) {
+        setLoading(false)
+        return
+      }
+
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
-      if (error) Alert.alert(error.message)
+
+      if (error) throw error
+
+      // Get user's existing location from profiles table (assuming you have one)
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('last_known_location')
+        .eq('id', authData.user.id)
+        .single()
+
+      if (profileError && profileError.code !== 'PGRST116') throw profileError
+
+      const existingLocation = profileData?.last_known_location
+
+      // Update location in profiles table
+      await supabase
+        .from('profiles')
+        .upsert({
+          id: authData.user.id,
+          last_known_location: currentLocation,
+          updated_at: new Date().toISOString()
+        })
+
+      if (existingLocation) {
+        // Compare locations (simple comparison - you might want something more sophisticated)
+        const locationChanged =
+          Math.abs(existingLocation.latitude - currentLocation.latitude) > 0.1 ||
+          Math.abs(existingLocation.longitude - currentLocation.longitude) > 0.1
+
+        if (locationChanged) {
+          // Send email notification via Supabase edge function or your own API
+          await supabase.functions.invoke('send-location-change-email', {
+            body: {
+              email,
+              newLocation: currentLocation,
+              oldLocation: existingLocation
+            }
+          })
+          Alert.alert('Notice', 'We detected a login from a new location. Check your email.')
+        }
+      }
+
     } catch (err) {
       Alert.alert('Sign In Error', err.message)
     } finally {
@@ -36,25 +108,43 @@ export default function Auth() {
     }
   }
 
-  // Sign up new user, pass username in user_metadata
+  // Sign up new user with initial location
   async function signUpWithEmail() {
     setLoading(true)
     try {
+      const currentLocation = await getCurrentLocation()
+      if (!currentLocation) {
+        setLoading(false)
+        return
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            username: username.trim()
+            username: username.trim(),
+            last_known_location: currentLocation
           }
         }
       })
-      if (error) {
-        Alert.alert(error.message)
-      } else if (!data.session) {
-        // Usually, the user must confirm via email
+
+      if (error) throw error
+
+      if (!data.session) {
         Alert.alert('Check your email for verification!')
       }
+
+      // Add initial location to profiles table
+      await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          username: username.trim(),
+          last_known_location: currentLocation,
+          updated_at: new Date().toISOString()
+        })
+
     } catch (err) {
       Alert.alert('Sign Up Error', err.message)
     } finally {
@@ -62,8 +152,10 @@ export default function Auth() {
     }
   }
 
+  // Rest of your component (JSX) remains the same...
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
+      {/* ... existing JSX ... */}
       <View style={styles.container}>
         {/* Toggle Sign In / Sign Up */}
         <View style={styles.toggleContainer}>
@@ -134,12 +226,20 @@ export default function Auth() {
             disabled={loading}
             onPress={() => (isSignUp ? signUpWithEmail() : signInWithEmail())}
           />
+          <Button
+            title={'Reset Passwd'}
+            buttonStyle={styles.buttonStyle}
+            titleStyle={styles.buttonTitleStyle}
+            onPress={() => navigation.navigate('reset')}
+          />
         </View>
       </View>
     </ScrollView>
   )
 }
 
+// Styles remain the same...
+//
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,

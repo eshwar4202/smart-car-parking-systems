@@ -18,6 +18,9 @@ import FAQ from './components/Faq'
 import PayHist from './components/Pay_hist'
 import Dashboard from './components/Dashboard'
 import EWallet from './components/EWallet'
+import Reset from './components/Reset'
+import Reset_Passwd from './components/Reset_passwd'
+import Login_hist from './components/Login_hist'
 
 const Stack = createStackNavigator()
 
@@ -76,48 +79,52 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      {session && session.user ? (
-        <Stack.Navigator>
-          {/* Home screen: Account */}
-          <Stack.Screen
-            name="Account"
-            component={Account}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen name="Map" component={Map} />
-          <Stack.Screen
-            name="Visualization"
-            component={Visualization}
-            initialParams={{ session }}
-          />
-          <Stack.Screen
-            name="Book"
-            component={Book}
-            initialParams={{ session }}
-          />
-          <Stack.Screen name="Service" component={Service} 
-          initialParams={{ session }}/>
-          <Stack.Screen name="Payment" component={Payment} />
-          <Stack.Screen name="faq" component={FAQ} />
-          <Stack.Screen
-            name="Pay_hist"
-            component={PayHist}
-            initialParams={{ session }}
-          />
-          <Stack.Screen
-            name="Dashboard"
-            component={Dashboard}
-            initialParams={{ session }}
-          />
-          <Stack.Screen
-            name="EWallet"
-            component={EWallet}
-            initialParams={{ session }}
-          />
-        </Stack.Navigator>
-      ) : (
-        <Auth />
-      )}
+      <Stack.Navigator>
+        {/* Home screen: Account */}
+        <Stack.Screen
+          name="Auth"
+          component={Auth}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Account"
+          component={Account}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="Map" component={Map} />
+        <Stack.Screen
+          name="Visualization"
+          component={Visualization}
+          initialParams={{ session }}
+        />
+        <Stack.Screen
+          name="Book"
+          component={Book}
+          initialParams={{ session }}
+        />
+        <Stack.Screen name="Service" component={Service} initialParams={{ session }} />
+        <Stack.Screen name="Payment" component={Payment} />
+        <Stack.Screen name="faq" component={FAQ} />
+        <Stack.Screen
+          name="Pay_hist"
+          component={PayHist}
+          initialParams={{ session }}
+        />
+        <Stack.Screen
+          name="Dashboard"
+          component={Dashboard}
+          initialParams={{ session }}
+        />
+        <Stack.Screen
+          name="EWallet"
+          component={EWallet}
+          initialParams={{ session }}
+        />
+        <Stack.Screen name='reset' component={Reset} />
+        <Stack.Screen name='ResetPassword' component={Reset_Passwd} />
+        <Stack.Screen name='LoginHistory' component={Login_hist} />
+      </Stack.Navigator>
+
     </NavigationContainer>
   )
 }

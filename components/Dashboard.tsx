@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, FlatList } from 'react-native'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native'
 import { createClient } from '@supabase/supabase-js'
-import { RouteProp, useRoute } from '@react-navigation/native'
+import { RouteProp, useRoute, useNavigation } from '@react-navigation/native'
 
 const supabaseUrl = 'https://velagnrotxuqhiczsczz.supabase.co'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbGFnbnJvdHh1cWhpY3pzY3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MjkxMjcsImV4cCI6MjA1NTIwNTEyN30.Xpr6wjdZdL6KN4gcZZ_q0aHOLpN3aAcG89uso0a_Fsw'
@@ -14,6 +14,7 @@ type DashboardRouteProp = RouteProp<
 
 export default function Dashboard() {
   const route = useRoute<DashboardRouteProp>()
+  const navigation = useNavigation()
   const session = route.params?.session
 
   const [userProfile, setUserProfile] = useState({
@@ -22,9 +23,7 @@ export default function Dashboard() {
     email: '',
     last_login: '',
   })
-  const [preferredParkingLocations, setPreferredParkingLocations] = useState<
-    string[]
-  >([])
+  const [preferredParkingLocations, setPreferredParkingLocations] = useState<string[]>([])
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -33,7 +32,6 @@ export default function Dashboard() {
     }
   }, [session])
 
-  // Fetch profile data from 'profiles' table
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -55,10 +53,8 @@ export default function Dashboard() {
     }
   }
 
-  // Example: fetch user-specific parking slots
   const fetchParkingSlots = async (userId: string) => {
     try {
-      // Suppose 'parking_slots' has a column 'uid' referencing userId
       const { data, error } = await supabase
         .from('parking_slots')
         .select('deck')
@@ -76,14 +72,12 @@ export default function Dashboard() {
     <View style={styles.container}>
       <Text style={styles.header}>Dashboard</Text>
 
-      {/* User Profile */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>User Profile</Text>
         <Text style={styles.text}>Username: {userProfile.username}</Text>
         <Text style={styles.text}>Email: {userProfile.email}</Text>
       </View>
 
-      {/* Last Login */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Last Login</Text>
         <Text style={styles.text}>
@@ -93,7 +87,6 @@ export default function Dashboard() {
         </Text>
       </View>
 
-      {/* Preferred Parking Locations */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Preferred Parking Locations</Text>
         <FlatList
@@ -102,6 +95,14 @@ export default function Dashboard() {
           renderItem={({ item }) => <Text style={styles.text}>{item}</Text>}
         />
       </View>
+
+      {/* Styled Button to Navigate to Login History */}
+      <TouchableOpacity
+        style={styles.historyButton}
+        onPress={() => navigation.navigate('LoginHistory', { session })}
+      >
+        <Text style={styles.buttonText}>View Login History</Text>
+      </TouchableOpacity>
     </View>
   )
 }
@@ -118,4 +119,22 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
   text: { fontSize: 16, color: 'black', marginBottom: 5 },
+  historyButton: {
+    marginTop: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 })

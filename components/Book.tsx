@@ -124,6 +124,18 @@ export default function ParkingSlots({ route }) {
 
       if (cancelError) throw cancelError;
 
+      // Insert transaction record
+      const { error: transactionError } = await supabase
+        .from("transactions")
+        .insert({
+          user_id: userId,
+          transaction_type: "cancellation_fee",
+          amount: -10,  // Negative amount since it's a deduction
+          created_at: new Date().toISOString()  // Optional: if you want to track when it happened
+        });
+
+      if (transactionError) throw transactionError;
+
       Alert.alert(
         "Cancellation Successful",
         "Deducted Rs 10 from your wallet",

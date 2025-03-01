@@ -87,6 +87,7 @@ export default function Account({ session }: { session: Session }) {
       Alert.alert('Sign Out Error', error.message);
     } else {
       console.log('Successfully signed out!');
+      navigation.navigate('Auth');
     }
   }
 

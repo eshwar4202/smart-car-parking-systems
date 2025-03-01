@@ -124,20 +124,15 @@ const SmartParkingSystem = ({ route }) => {
     }
   };
 
-  const getTimeLimits = () => {
-    const now = new Date();
-    const minTime = new Date(now);
-    minTime.setHours(7, 0, 0, 0); // 7:00 AM today
-    const maxTime = new Date(now);
-    maxTime.setHours(22, 0, 0, 0); // 10:00 PM today
-    return { minTime, maxTime };
+  const isTimeWithinRange = (date) => {
+    const hours = date.getHours();
+    return hours >= 7 && hours < 22; // 7:00 AM to 10:00 PM
   };
 
   const handleFromConfirm = (date) => {
-    const { minTime, maxTime } = getTimeLimits();
     setFromPickerVisible(false);
 
-    if (date < minTime || date > maxTime) {
+    if (!isTimeWithinRange(date)) {
       Alert.alert('Invalid Time', 'Please select a time between 7:00 AM and 10:00 PM.');
       return;
     }
@@ -147,10 +142,9 @@ const SmartParkingSystem = ({ route }) => {
   };
 
   const handleToConfirm = (date) => {
-    const { minTime, maxTime } = getTimeLimits();
     setToPickerVisible(false);
 
-    if (date < minTime || date > maxTime) {
+    if (!isTimeWithinRange(date)) {
       Alert.alert('Invalid Time', 'Please select a time between 7:00 AM and 10:00 PM.');
       return;
     }
@@ -225,8 +219,6 @@ const SmartParkingSystem = ({ route }) => {
     }
   };
 
-  const { minTime, maxTime } = getTimeLimits();
-
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -241,7 +233,7 @@ const SmartParkingSystem = ({ route }) => {
             onPress={() => setFromPickerVisible(true)}
           >
             <Text style={styles.timeButtonText}>
-              From: {fromTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              From: {fromTime.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -249,7 +241,7 @@ const SmartParkingSystem = ({ route }) => {
             onPress={() => setToPickerVisible(true)}
           >
             <Text style={styles.timeButtonText}>
-              To: {toTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              To: {toTime.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
             </Text>
           </TouchableOpacity>
           <Text style={styles.infoText}>Booking available: 7:00 AM - 10:00 PM</Text>
@@ -283,8 +275,6 @@ const SmartParkingSystem = ({ route }) => {
         onConfirm={handleFromConfirm}
         onCancel={() => setFromPickerVisible(false)}
         date={fromTime}
-        minimumDate={minTime}
-        maximumDate={maxTime}
       />
       <DateTimePickerModal
         isVisible={isToPickerVisible}
@@ -292,8 +282,6 @@ const SmartParkingSystem = ({ route }) => {
         onConfirm={handleToConfirm}
         onCancel={() => setToPickerVisible(false)}
         date={toTime}
-        minimumDate={minTime}
-        maximumDate={maxTime}
       />
 
       {selectedSlots.length > 0 && (
@@ -309,6 +297,7 @@ const SmartParkingSystem = ({ route }) => {
   );
 };
 
+// Styles remain unchanged
 const styles = StyleSheet.create({
   container: {
     flex: 1,
