@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, FlatList, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, Button,TouchableOpacity, FlatList, StyleSheet, Alert } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 import { useRoute } from '@react-navigation/native';
 import { Session } from '@supabase/supabase-js';
@@ -130,7 +130,7 @@ export default function EWallet() {
 
   // Render each transaction
   function renderTransaction({ item }: { item: Transaction }) {
-    const isDeduction = item.transaction_type === 'CANCELLATION FEE' || item.transaction_type === 'SERVICE FEE';
+    const isDeduction = item.transaction_type === 'CANCELLATION FEE' || item.transaction_type === 'SERVICE FEE' || item.transaction_type === 'BOOKING FEE' ;
     let amount = parseFloat(item.amount);
     const sign = isDeduction ? '-' : '+';
     const color = isDeduction ? 'red' : 'green';
@@ -162,7 +162,9 @@ export default function EWallet() {
           onChangeText={setRechargeAmount}
           placeholder="e.g. 50"
         />
-        <Button title="Recharge" onPress={handleRecharge} />
+        <TouchableOpacity style={styles.rechargeButton} onPress={handleRecharge}>
+          <Text style={styles.rechargeButtonText}>Recharge</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Transaction History */}
@@ -208,6 +210,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingHorizontal: 8,
     height: 40,
+  },
+  rechargeButton: {
+    backgroundColor: '#4C4C9D',  // Button color
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  rechargeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   historyTitle: {
     fontSize: 18,

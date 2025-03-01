@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   header: {
-    backgroundColor: '#2c3e50',
+    backgroundColor: '#4C4C9D',
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderRadius: 10,
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 10,
   },
   sliderContainer: {
-    backgroundColor: '#3498db',
+    backgroundColor: '#4C4C9D',
     height: 60,
     borderRadius: 30,
     flexDirection: 'row',
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   },
   sliderArrow: {
     fontSize: 24,
-    color: '#3498db',
+    color: '#4C4C9D',
     fontWeight: 'bold',
   },
   sliderText: {

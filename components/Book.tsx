@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   },
   occupied: {
     borderLeftWidth: 5,
-    borderLeftColor: "red",
+    borderLeftColor: "#4C4C9D",
   },
   available: {
     borderLeftWidth: 5,

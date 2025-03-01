@@ -146,14 +146,14 @@ const styles = StyleSheet.create({
   bookButton: {
     marginTop: 20,
     padding: 15,
-    backgroundColor: '#007bff',
+    backgroundColor: '#4C4C9D',
     alignItems: 'center',
     borderRadius: 5,
   },
   faq: {
     marginTop: 20,
     padding: 15,
-    backgroundColor: '#007bff',
+    backgroundColor: '#4C4C9D',
     alignItems: 'center',
     borderRadius: 5,
   },

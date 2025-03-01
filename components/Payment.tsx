@@ -1,14 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
+import { useNavigation } from '@react-navigation/native';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
+
 
 const supabaseUrl = 'https://velagnrotxuqhiczsczz.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbGFnbnJvdHh1cWhpY3pzY3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MjkxMjcsImV4cCI6MjA1NTIwNTEyN30.Xpr6wjdZdL6KN4gcZZ_q0aHOLpN3aAcG89uso0a_Fsw';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const Payment = ({ route, navigation }) => {
-  const { slots, amount, pricePerSlot, session } = route.params;
+  const { fromTime, toTime, slots, amount, pricePerSlot, session } = route.params;
+  // Format the dates
+  const fromFormatted = new Date(fromTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+  const toFormatted = new Date(toTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
   const [userId, setUserId] = useState(null);
+  const slotCount = slots.length;
+  const totalAmount = slotCount * pricePerSlot;
 
   useEffect(() => {
     if (session && session.user && session.user.id) {
@@ -42,12 +50,18 @@ const Payment = ({ route, navigation }) => {
       if (error) throw error;
 
       Alert.alert(
-        "Payment Successful",
-        `You have successfully reserved ${slots.length} parking slot(s) for ₹${amount}.`,
+        "Payment Redirection",
+        `You are being redirected to payment page for reserving ${slots.length} parking slot(s) for ₹${amount}.`,
         [
           {
             text: "OK",
-            onPress: () => navigation.navigate('Account')
+            onPress: () => navigation.navigate('PaymentBooking', {
+              slotCount: slotCount,  
+              totalPrice: totalAmount,  
+              session: session,
+              fromTime: fromTime,
+              toTime: toTime,
+            })
           }
         ]
       );
@@ -61,6 +75,15 @@ const Payment = ({ route, navigation }) => {
     <View style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.title}>Payment Summary</Text>
+        <View style={styles.row}>
+          <Text style={styles.label}>From Time:</Text>
+          <Text style={styles.value}>{fromFormatted}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>To Time:</Text>
+          <Text style={styles.value}>{toFormatted}</Text>
+        </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>Selected Slots:</Text>

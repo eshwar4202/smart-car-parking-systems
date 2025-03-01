@@ -4,30 +4,27 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://velagnrotxuqhiczsczz.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbGFnbnJvdHh1cWhpY3pzY3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MjkxMjcsImV4cCI6MjA1NTIwNTEyN30.Xpr6wjdZdL6KN4gcZZ_q0aHOLpN3aAcG89uso0a_Fsw';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbGFnbnJvdHh1cWhpY3pzY3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MjkxMjcsImV4cCI6MjA1NTIwNTEyN30.Xpr6wjdZdL6KN4gcZZ_q0aHOLpN3aAcG89uso0a_Fsw';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-export default function PaymentService() {
+export default function BookingPaymentService() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { service, date, session } = route.params;
-  
+  const { slotCount,totalPrice,session,fromTime,toTime } = route.params;
+  const fromFormatted = new Date(fromTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+  const toFormatted = new Date(toTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
   const [paymentMethod, setPaymentMethod] = useState(null);
-  const [servicePrice, setServicePrice] = useState(null);
   const [balance, setBalance] = useState('0.00');
+
   const userId = session?.user?.id;
 
   useEffect(() => {
+    console.log("Slot Count:", slotCount);
+    console.log(route.params);
     if (userId) {
       fetchWallet(userId);
     }
-  }, [userId]);
-
-  useEffect(() => {
-    if (service?.id) {
-      fetchServicePrice(service.id);
-    }
-  }, [service]);
+  }, [userId, route.params]);
 
   async function fetchWallet(userId) {
     try {
@@ -44,22 +41,6 @@ export default function PaymentService() {
     }
   }
 
-  async function fetchServicePrice(serviceId) {
-    try {
-      const { data, error } = await supabase
-        .from('services')
-        .select('price')
-        .eq('id', serviceId)
-        .single();
-
-      if (error) throw error;
-      setServicePrice(data?.price);
-    } catch (err) {
-      Alert.alert('Error', 'Failed to fetch service price');
-      console.error(err);
-    }
-  }
-
   const handlePaymentConfirmation = () => {
     if (!paymentMethod) {
       Alert.alert('Error', 'Please select a payment method.');
@@ -69,71 +50,91 @@ export default function PaymentService() {
     if (paymentMethod === 'E-Wallet') {
       Alert.alert(
         'Confirm Payment',
-        `Are you sure you want to deduct ${servicePrice} from your e-wallet?`,
+        `Are you sure you want to deduct ₹${totalPrice} from your e-wallet?`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Confirm', onPress: handleEWalletPayment },
         ]
       );
     } else {
-      Alert.alert('Success', `Payment of ${servicePrice} scheduled for ${date} using ${paymentMethod}.`);
+      Alert.alert('Success', `Payment of ₹${totalPrice} scheduled for ${fromFormatted} to ${toFormatted} using ${paymentMethod}.`);
       navigation.goBack();
     }
   };
 
   const handleEWalletPayment = async () => {
-    if (parseFloat(balance) >= parseFloat(servicePrice)) {
-      const newBalance = parseFloat(balance) - parseFloat(servicePrice);
+    if (parseFloat(balance) >= totalPrice) {
+      const newBalance = parseFloat(balance) - totalPrice;
       try {
+        // Deduct balance
         const { error: balanceError } = await supabase
           .from('wallets')
           .update({ balance: newBalance })
           .eq('user_id', userId);
-  
+
         if (balanceError) throw balanceError;
-  
+
         // Insert transaction record
         const { error: transactionError } = await supabase
           .from('transactions')
           .insert([
             {
               user_id: userId,
-              transaction_type: 'SERVICE FEE',
-              amount: servicePrice,
+              transaction_type: 'BOOKING FEE',
+              amount: totalPrice,
             },
           ]);
-  
+
         if (transactionError) throw transactionError;
-  
-        Alert.alert('Payment Successful', `Successfully deducted ${servicePrice} from your e-wallet.`);
-        navigation.goBack();
+
+        // Insert booking record
+        const { error: bookingError } = await supabase
+          .from('bookings')
+          .insert([
+            {
+              user_id: userId,
+              start_date: fromTime,
+              end_date: toTime,
+              slot_count: slotCount,
+              total_price: totalPrice,
+              status: 'Confirmed',
+            },
+          ]);
+
+        if (bookingError) throw bookingError;
+
+        Alert.alert('Booking Confirmed', `Your booking for ${slotCount} slots on ${fromFormatted} to ${toFormatted} is confirmed.`);
+        navigation.navigate('Account');
       } catch (err) {
-        Alert.alert('Error', 'An error occurred while processing the payment.');
-        console.error('Payment error:', err);
+        Alert.alert('Error', 'An error occurred while processing the booking.');
+        console.error('Booking error:', err);
       }
     } else {
-      Alert.alert('Insufficient Balance', `Your balance of ${balance} is insufficient.`);
+      Alert.alert('Insufficient Balance', `Your balance of ₹${balance} is insufficient.`);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Payment for {service?.name}</Text>
-      <Text style={styles.subtitle}>Date: {date}</Text>
-      <Text style={styles.subtitle}>Price: {servicePrice || 'Loading...'}</Text>
-      <Text style={styles.subtitle}>Wallet Balance: {balance}</Text>
+      <Text style={styles.title}>Payment for Booking</Text>
+      <Text style={styles.subtitle}>
+        Date: {fromFormatted} to {toFormatted}
+      </Text>
+      <Text style={styles.subtitle}>Slots: {slotCount}</Text>
+      <Text style={styles.subtitle}>Total Price: ₹{totalPrice}</Text>
+      <Text style={styles.subtitle}>Wallet Balance: ₹{balance}</Text>
 
       <Text style={styles.paymentMethodTitle}>Select Payment Method</Text>
       {['UPI', 'Credit/Debit Card', 'E-Wallet'].map((method) => (
-        <TouchableOpacity 
-          key={method} 
-          style={[styles.paymentButton, paymentMethod === method && styles.selectedButton]} 
+        <TouchableOpacity
+          key={method}
+          style={[styles.paymentButton, paymentMethod === method && styles.selectedButton]}
           onPress={() => setPaymentMethod(method)}
         >
           <Text style={styles.buttonText}>{method}</Text>
         </TouchableOpacity>
       ))}
-      
+
       <TouchableOpacity style={styles.confirmButton} onPress={handlePaymentConfirmation}>
         <Text style={styles.buttonText}>Confirm Payment</Text>
       </TouchableOpacity>
@@ -164,12 +165,12 @@ const styles = StyleSheet.create({
   paymentButton: {
     marginVertical: 10,
     padding: 15,
-    backgroundColor: '#4C4C9D',
+    backgroundColor: '#007bff',
     alignItems: 'center',
     borderRadius: 5,
   },
   selectedButton: {
-    backgroundColor: '#7878be',
+    backgroundColor: '#0056b3',
   },
   confirmButton: {
     marginTop: 20,
