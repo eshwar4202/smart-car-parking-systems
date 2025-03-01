@@ -129,7 +129,7 @@ export default function ParkingSlots({ route }) {
         .from("transactions")
         .insert({
           user_id: userId,
-          transaction_type: "cancellation_fee",
+          transaction_type: "CANCELLATION FEE",
           amount: -10,  // Negative amount since it's a deduction
           created_at: new Date().toISOString()  // Optional: if you want to track when it happened
         });

@@ -63,8 +63,11 @@ export default function ServiceBooking() {
         ]);
 
       if (error) throw error;
+      navigation.navigate('PaymentService', {
+        service: selectedService,
+        date: localDateTime,
+      });
 
-      Alert.alert('Success', `Service booked successfully for ${localDateTime}!`);
     } catch (err) {
       Alert.alert('Error', 'Failed to book service.');
       console.error("Booking Error:", err);

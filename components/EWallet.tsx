@@ -130,10 +130,10 @@ export default function EWallet() {
 
   // Render each transaction
   function renderTransaction({ item }: { item: Transaction }) {
-    const isCancellation = item.transaction_type === 'cancellation_fee';
+    const isDeduction = item.transaction_type === 'CANCELLATION FEE' || item.transaction_type === 'SERVICE FEE';
     let amount = parseFloat(item.amount);
-    const sign = isCancellation ? '-' : '+';
-    const color = isCancellation ? 'red' : 'green';
+    const sign = isDeduction ? '-' : '+';
+    const color = isDeduction ? 'red' : 'green';
     return (
       <View style={styles.transactionItem}>
         <Text style={styles.txType}>{item.transaction_type}</Text>
