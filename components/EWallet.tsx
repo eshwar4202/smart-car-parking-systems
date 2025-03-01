@@ -130,10 +130,16 @@ export default function EWallet() {
 
   // Render each transaction
   function renderTransaction({ item }: { item: Transaction }) {
+    const isCancellation = item.transaction_type === 'cancellation_fee';
+    let amount = parseFloat(item.amount);
+    const sign = isCancellation ? '-' : '+';
+    const color = isCancellation ? 'red' : 'green';
     return (
       <View style={styles.transactionItem}>
         <Text style={styles.txType}>{item.transaction_type}</Text>
-        <Text style={styles.txAmount}>${item.amount}</Text>
+        <Text style={[styles.txAmount, { color }]}>
+        {sign} ₹{Math.abs(amount)}
+        </Text>
         <Text style={styles.txDate}>{new Date(item.created_at).toLocaleString()}</Text>
       </View>
     );
@@ -143,7 +149,7 @@ export default function EWallet() {
     <View style={styles.container}>
       {/* Current Balance */}
       <View style={styles.balanceContainer}>
-        <Text style={styles.balanceText}>Current Balance: ${balance}</Text>
+        <Text style={styles.balanceText}>Current Balance: ₹{balance}</Text>
       </View>
 
       {/* Recharge Section */}

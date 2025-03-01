@@ -178,7 +178,7 @@ export default function Account({ session }: { session: Session }) {
             { transform: [{ translateX: slideAnim }] }
           ]}
         >
-          <Text style={styles.sliderArrow}>→</Text>
+          <Text style={styles.sliderArrow}>></Text>
         </Animated.View>
         <Text style={styles.sliderText}>Slide to Dashboard</Text>
       </View>
@@ -292,10 +292,11 @@ const styles = StyleSheet.create({
   signOutButton: {
     backgroundColor: '#e74c3c',
     paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 25,
+    borderRadius: 30,
     alignSelf: 'center',
     elevation: 4,
+    width: '100%',  // Make it full-width
+    alignItems: 'center',
   },
   signOutText: {
     color: '#fff',

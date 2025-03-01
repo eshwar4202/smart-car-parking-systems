@@ -22,6 +22,7 @@ AppState.addEventListener('change', (state) => {
 export default function Auth({ navigation }: AuthProps) { // Accept navigation as a prop
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -121,15 +122,19 @@ export default function Auth({ navigation }: AuthProps) { // Accept navigation a
         }
       }
 
-      navigation.navigate('Account'); // Use the prop here
+      navigation.navigate('Account'); 
     } catch (err) {
       Alert.alert('Sign In Error', err.message);
     } finally {
       setLoading(false);
     }
   }
-
+  
   async function signUpWithEmail() {
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Passwords do not match');
+      return;
+    }
     setLoading(true);
     try {
       const currentLocation = await getCurrentLocation();
@@ -186,12 +191,26 @@ export default function Auth({ navigation }: AuthProps) { // Accept navigation a
             type={isSignUp ? 'outline' : 'solid'}
             onPress={() => setIsSignUp(false)}
             containerStyle={styles.toggleButton}
+            buttonStyle={{
+              backgroundColor: isSignUp ? 'white' : '#4C4C9D',  
+              borderColor: '#4C4C9D',  
+            }}
+            titleStyle={{
+              color: isSignUp ? '#4C4C9D' : 'white', 
+            }}
           />
           <Button
             title="Sign Up"
             type={!isSignUp ? 'outline' : 'solid'}
             onPress={() => setIsSignUp(true)}
             containerStyle={styles.toggleButton}
+            buttonStyle={{
+              backgroundColor: !isSignUp ? 'white' : '#4C4C9D',  
+              borderColor: '#4C4C9D', 
+            }}
+            titleStyle={{
+              color: !isSignUp ? '#4C4C9D' : 'white',  
+            }}
           />
         </View>
 
@@ -215,30 +234,44 @@ export default function Auth({ navigation }: AuthProps) { // Accept navigation a
             onChangeText={setPassword}
             value={password}
             secureTextEntry={true}
-            placeholder="Password"
+            placeholder="password"
             autoCapitalize="none"
             inputStyle={styles.inputStyle}
             inputContainerStyle={styles.inputContainer}
             labelStyle={styles.labelStyle}
           />
         </View>
-
         {isSignUp && (
-          <View style={[styles.verticallySpaced, styles.inputSpacing]}>
+          <>
+              <View style={[styles.verticallySpaced, styles.inputSpacing]}>
+              <Input
+                label="Confirm Password"
+                leftIcon={{ type: 'font-awesome', name: 'lock', color: '#4C4C9D' }}
+                onChangeText={setConfirmPassword}
+                value={confirmPassword}
+                secureTextEntry={true}
+                placeholder="confirm password"
+                autoCapitalize="none"
+                inputStyle={styles.inputStyle}
+                inputContainerStyle={styles.inputContainer}
+                labelStyle={styles.labelStyle}
+              />
+            </View>
+            <View style={[styles.verticallySpaced, styles.inputSpacing]}>
             <Input
               label="Username"
               leftIcon={{ type: 'font-awesome', name: 'user', color: '#4C4C9D' }}
               onChangeText={setUsername}
               value={username}
-              placeholder="Your username"
+              placeholder="username"
               autoCapitalize="none"
               inputStyle={styles.inputStyle}
               inputContainerStyle={styles.inputContainer}
               labelStyle={styles.labelStyle}
             />
           </View>
+          </>
         )}
-
         <View style={[styles.verticallySpaced, styles.mt20]}>
           <Button
             title={isSignUp ? 'Sign Up' : 'Sign In'}
@@ -247,12 +280,14 @@ export default function Auth({ navigation }: AuthProps) { // Accept navigation a
             disabled={loading}
             onPress={() => (isSignUp ? signUpWithEmail() : signInWithEmail())}
           />
+          {!isSignUp && (
           <Button
-            title="Reset Passwd"
+            title="Reset Password"
             buttonStyle={styles.buttonStyle}
             titleStyle={styles.buttonTitleStyle}
             onPress={() => navigation.navigate('reset')} // Use the prop here
-          />
+            containerStyle={styles.resetButton}
+          />)}
         </View>
       </View>
     </ScrollView>
@@ -277,6 +312,7 @@ const styles = StyleSheet.create({
   toggleButton: {
     flex: 1,
     marginHorizontal: 5,
+    
   },
   verticallySpaced: {
     paddingTop: 8,
@@ -309,6 +345,9 @@ const styles = StyleSheet.create({
   buttonTitleStyle: {
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  resetButton: {
+    marginTop: 8, 
   },
   inputSpacing: {
     marginTop: 10,
