@@ -198,12 +198,12 @@ export default function ParkingSlots({ route }) {
                   setShowCancelModal(false);
                   setCancelReason("");
                 }}
-                color="#gray"
+                color="#4C4C9D" 
               />
               <Button
                 title="Confirm"
                 onPress={handleCancelConfirmation}
-                color="#007BFF"
+                color="#4CAF50"
               />
             </View>
           </View>
