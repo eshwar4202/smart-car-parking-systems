@@ -221,7 +221,8 @@ const SmartParkingSystem = ({ route }) => {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <FlatList
+      ListHeaderComponent={
         <View style={styles.infoCard}>
           <Text style={styles.infoText}>Price per slot: ₹{PRICE_PER_SLOT}</Text>
           <Text style={styles.infoText}>
@@ -246,28 +247,32 @@ const SmartParkingSystem = ({ route }) => {
           </TouchableOpacity>
           <Text style={styles.infoText}>Booking available: 7:00 AM - 10:00 PM</Text>
         </View>
-
-        {decks.map((deck) => {
-          const filteredSlots = slots.filter(
-            (slot) => slot.deck.trim().toLowerCase() === deck.trim().toLowerCase()
-          );
-          return (
-            <View key={deck} style={styles.deck}>
-              <Text style={styles.deckTitle}>{deck}</Text>
-              {filteredSlots.length > 0 ? (
-                <FlatList
-                  data={filteredSlots}
-                  renderItem={renderSlot}
-                  keyExtractor={(item) => item.id.toString()}
-                  numColumns={3}
-                />
-              ) : (
-                <Text>No slots available for this deck.</Text>
-              )}
-            </View>
-          );
-        })}
-      </ScrollView>
+      }
+data={decks}
+      keyExtractor={(deck) => deck}
+      renderItem={({ item: deck }) => {
+        const filteredSlots = slots.filter(
+          (slot) => slot.deck.trim().toLowerCase() === deck.trim().toLowerCase()
+        );
+        return (
+          <View key={deck} style={styles.deck}>
+            <Text style={styles.deckTitle}>{deck}</Text>
+            {filteredSlots.length > 0 ? (
+              <FlatList
+                data={filteredSlots}
+                renderItem={renderSlot}
+                keyExtractor={(item) => item.id.toString()}
+                numColumns={3}
+                nestedScrollEnabled={true} // Allows nested scrolling inside FlatList
+              />
+            ) : (
+              <Text>No slots available for this deck.</Text>
+            )}
+          </View>
+        );
+      }}
+      contentContainerStyle={styles.scrollContent}
+    />
 
       <DateTimePickerModal
         isVisible={isFromPickerVisible}

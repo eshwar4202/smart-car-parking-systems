@@ -222,27 +222,24 @@ function ParkingSlotCard({ slot, navigation, onCancel }) {
   };
 
   return (
-    <TouchableOpacity
-      style={[styles.card, isOccupied ? styles.occupied : styles.available]}
-      onPress={() => navigation.navigate("SlotDetails", { slot })}
-    >
+    <View style={[styles.card, isOccupied ? styles.occupied : styles.available]}>
       <Svg height="50" width="50">
         <Circle cx="25" cy="25" r="20" fill={isOccupied ? "red" : "green"} />
       </Svg>
-
+  
       <View style={styles.cardText}>
         <Text style={styles.slotNumber}>Slot {slot.id} ({slot.deck})</Text>
         <Text style={styles.statusText}>{isOccupied ? "Booked" : "Available"}</Text>
         <Text style={styles.timeText}>From: {formatDateTime(slot.from)}</Text>
         <Text style={styles.timeText}>To: {formatDateTime(slot.to)}</Text>
       </View>
-
+  
       {isOccupied && (
         <TouchableOpacity style={styles.cancelButton} onPress={() => onCancel(slot.id)}>
           <Text style={styles.cancelText}>X</Text>
         </TouchableOpacity>
       )}
-    </TouchableOpacity>
+    </View>
   );
 }
 
