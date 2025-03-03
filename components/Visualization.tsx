@@ -11,11 +11,12 @@ import { createClient } from '@supabase/supabase-js';
 import { useNavigation } from '@react-navigation/native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
-// Supabase setup and constants remain unchanged
+// Supabase setup
 const supabaseUrl = 'https://velagnrotxuqhiczsczz.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbGFnbnJvdHh1cWhpY3pzY3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MjkxMjcsImV4cCI6MjA1NTIwNTEyN30.Xpr6wjdZdL6KN4gcZZ_q0aHOLpN3aAcG89uso0a_Fsw';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Constants
 const SLOT_STATUS = {
   EMPTY: 'empty',
   RESERVED: 'reserved',
@@ -30,12 +31,14 @@ const SLOT_ACTIONS = {
 const PRICE_PER_SLOT = 200;
 const decks = ['Upper Deck', 'Lower Deck'];
 
+// Review interface
 interface Review {
   profiles: {
     username: string;
   };
   rating: number;
   review: string;
+  fav: boolean;
 }
 
 const SmartParkingSystem = ({ route }) => {
@@ -47,12 +50,11 @@ const SmartParkingSystem = ({ route }) => {
   const [isModifying, setIsModifying] = useState(false);
   const [modifyingSlotId, setModifyingSlotId] = useState(null);
   const navigation = useNavigation();
-
   const [isFromPickerVisible, setFromPickerVisible] = useState(false);
   const [isToPickerVisible, setToPickerVisible] = useState(false);
   const [fromTime, setFromTime] = useState(new Date());
   const [toTime, setToTime] = useState(new Date());
-  const [review, SetReview] = useState<Review[]>([]);
+  const [review, setReview] = useState([]);
 
   useEffect(() => {
     fetchSlots();
@@ -65,7 +67,6 @@ const SmartParkingSystem = ({ route }) => {
     }
 
     const intervalId = setInterval(checkAndCancelExpiredBookings, 3000);
-
     return () => clearInterval(intervalId);
   }, [session]);
 
@@ -82,6 +83,7 @@ const SmartParkingSystem = ({ route }) => {
         (slot) => slot.id && slot.deck && slot.status
       );
       setSlots(validData);
+      console.log('Fetched slots:', validData); // Debug fetched data
     } catch (err) {
       console.error('Fetch Slots Error:', err);
       Alert.alert('Error', 'Failed to fetch parking slots.');
@@ -96,30 +98,43 @@ const SmartParkingSystem = ({ route }) => {
         .eq('lot_id', lotId)
         .order('id');
       if (error) throw error;
-      SetReview(data as Review[]);
+      setReview(data);
     } catch (err) {
       console.error(err);
-      Alert.alert('err', 'Failed to fetch review');
+      Alert.alert('Error', 'Failed to fetch reviews');
     }
-  }
+  };
 
   const checkAndCancelExpiredBookings = async () => {
     try {
       const currentTime = new Date();
-      const expiredSlots = slots.filter(
-        (slot) =>
+      const expiredSlots = slots.filter((slot) => {
+        const toDate = slot.to ? new Date(slot.to) : null;
+        const isExpired =
           slot.status === SLOT_STATUS.RESERVED &&
-          slot.to &&
-          new Date(slot.to) < currentTime
-      );
+          toDate &&
+          toDate < currentTime;
+
+        // Debug logging
+        if (slot.status === SLOT_STATUS.RESERVED) {
+          console.log(`Slot ${slot.id}:`);
+          console.log(`- Current Time: ${currentTime.toISOString()}`);
+          console.log(`- Slot To Time: ${slot.to}`);
+          console.log(`- Parsed To Time: ${toDate ? toDate.toISOString() : 'null'}`);
+          console.log(`- Is Expired: ${isExpired}`);
+        }
+
+        return isExpired;
+      });
 
       for (const slot of expiredSlots) {
+        console.log(`Cancelling expired slot ${slot.id}`);
         await updateSlot(slot.id, SLOT_STATUS.EMPTY);
       }
 
       if (expiredSlots.length > 0) {
         console.log(`Cancelled ${expiredSlots.length} expired bookings.`);
-        fetchSlots(); // Refresh slots after updates
+        fetchSlots();
       }
     } catch (err) {
       console.error('Error checking expired bookings:', err);
@@ -136,6 +151,11 @@ const SmartParkingSystem = ({ route }) => {
         updateData.uid = userId;
         updateData.from = fromTime.toISOString();
         updateData.to = toTime.toISOString();
+        console.log('Booking slot with:', { // Debug booking data
+          slotId,
+          from: updateData.from,
+          to: updateData.to,
+        });
       } else if (newStatus === SLOT_STATUS.EMPTY) {
         updateData.uid = null;
         updateData.from = null;
@@ -166,7 +186,6 @@ const SmartParkingSystem = ({ route }) => {
       }
 
       fetchSlots();
-
 
       if (isModifying) {
         Alert.alert('Success', 'Booking updated successfully');
@@ -232,29 +251,24 @@ const SmartParkingSystem = ({ route }) => {
 
   const handleFromConfirm = (date) => {
     setFromPickerVisible(false);
-
     if (!isTimeWithinRange(date)) {
       Alert.alert('Invalid Time', 'Please select a time between 7:00 AM and 10:00 PM.');
       return;
     }
-
     setFromTime(date);
     setToPickerVisible(true);
   };
 
   const handleToConfirm = (date) => {
     setToPickerVisible(false);
-
     if (!isTimeWithinRange(date)) {
       Alert.alert('Invalid Time', 'Please select a time between 7:00 AM and 10:00 PM.');
       return;
     }
-
     if (date <= fromTime) {
       Alert.alert('Error', 'End time must be after start time.');
       return;
     }
-
     setToTime(date);
 
     if (isModifying && modifyingSlotId) {
@@ -273,7 +287,6 @@ const SmartParkingSystem = ({ route }) => {
       Alert.alert('No Slots Selected', 'Please select at least one parking slot.');
       return;
     }
-
     const totalAmount = selectedSlots.length * PRICE_PER_SLOT;
     navigation.navigate('Payment', {
       slots: selectedSlots,
@@ -326,9 +339,7 @@ const SmartParkingSystem = ({ route }) => {
   };
 
   const prepareFlatListData = () => {
-    const data = [
-      { type: 'header', id: 'info-card' },
-    ];
+    const data = [{ type: 'header', id: 'info-card' }];
 
     decks.forEach((deck) => {
       const deckSlots = slots.filter(
@@ -343,6 +354,7 @@ const SmartParkingSystem = ({ route }) => {
       }
     });
 
+    data.push({ type: 'reviews', id: 'reviews-section' });
     return data;
   };
 
@@ -363,9 +375,7 @@ const SmartParkingSystem = ({ route }) => {
       <View style={styles.reviewCard}>
         <View style={styles.reviewHeader}>
           <Text style={styles.reviewUsername}>{username}</Text>
-          <View style={styles.ratingContainer}>
-            {renderStars(rating)}
-          </View>
+          <View style={styles.ratingContainer}>{renderStars(rating)}</View>
         </View>
         <Text style={styles.reviewText}>{review}</Text>
       </View>
@@ -419,6 +429,28 @@ const SmartParkingSystem = ({ route }) => {
         );
       case 'no-slots':
         return <Text>No slots available for this deck.</Text>;
+      case 'reviews':
+        return (
+          <View style={styles.reviewsContainer}>
+            <Text style={styles.reviewsTitle}>Reviews</Text>
+            {review.length > 0 ? (
+              <FlatList
+                data={review}
+                renderItem={({ item }) => (
+                  <ReviewCard
+                    review={item.review}
+                    username={item.profiles?.username || 'Anonymous'}
+                    rating={item.rating}
+                  />
+                )}
+                keyExtractor={(item) => item.id.toString()}
+                scrollEnabled={false}
+              />
+            ) : (
+              <Text style={styles.noReviewsText}>No reviews yet</Text>
+            )}
+          </View>
+        );
       default:
         return null;
     }
@@ -427,65 +459,11 @@ const SmartParkingSystem = ({ route }) => {
   return (
     <View style={styles.container}>
       <FlatList
-<<<<<<< HEAD
-      ListHeaderComponent={
-        <View style={styles.infoCard}>
-          <Text style={styles.infoText}>Price per slot: ₹{PRICE_PER_SLOT}</Text>
-          <Text style={styles.infoText}>
-            Selected slots: {selectedSlots.length}
-            {selectedSlots.length > 0 ? ` (₹${selectedSlots.length * PRICE_PER_SLOT})` : ''}
-          </Text>
-          <TouchableOpacity
-            style={styles.timeButton}
-            onPress={() => setFromPickerVisible(true)}
-          >
-            <Text style={styles.timeButtonText}>
-              From: {fromTime.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.timeButton}
-            onPress={() => setToPickerVisible(true)}
-          >
-            <Text style={styles.timeButtonText}>
-              To: {toTime.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-            </Text>
-          </TouchableOpacity>
-          <Text style={styles.infoText}>Booking available: 7:00 AM - 10:00 PM</Text>
-        </View>
-      }
-data={decks}
-      keyExtractor={(deck) => deck}
-      renderItem={({ item: deck }) => {
-        const filteredSlots = slots.filter(
-          (slot) => slot.deck.trim().toLowerCase() === deck.trim().toLowerCase()
-        );
-        return (
-          <View key={deck} style={styles.deck}>
-            <Text style={styles.deckTitle}>{deck}</Text>
-            {filteredSlots.length > 0 ? (
-              <FlatList
-                data={filteredSlots}
-                renderItem={renderSlot}
-                keyExtractor={(item) => item.id.toString()}
-                numColumns={3}
-                nestedScrollEnabled={true} // Allows nested scrolling inside FlatList
-              />
-            ) : (
-              <Text>No slots available for this deck.</Text>
-            )}
-          </View>
-        );
-      }}
-      contentContainerStyle={styles.scrollContent}
-    />
-=======
         data={prepareFlatListData()}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.scrollContent}
       />
->>>>>>> ad481a4e (user_review)
 
       <DateTimePickerModal
         isVisible={isFromPickerVisible}
@@ -523,32 +501,10 @@ data={decks}
           </TouchableOpacity>
         </View>
       )}
-
-      <View style={styles.reviewsContainer}>
-        <Text style={styles.reviewsTitle}>Reviews</Text>
-        {review.length > 0 ? (
-          <FlatList
-            data={review}
-            renderItem={({ item }) => (
-              <ReviewCard
-                review={item.review}
-                username={item.profiles?.username || 'Anonymous'}
-                rating={item.rating}
-              />
-            )}
-            keyExtractor={(item) => item.id.toString()}
-            showsVerticalScrollIndicator={false}
-          />
-        ) : (
-          <Text style={styles.noReviewsText}>No reviews yet</Text>
-        )}
-      </View>
-
     </View>
   );
 };
 
-// Styles remain unchanged
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -556,7 +512,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 10,
-    paddingBottom: 80,
+    paddingBottom: 100,
   },
   infoCard: {
     backgroundColor: '#fff',
@@ -627,22 +583,23 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 20,
     right: 20,
+    zIndex: 10,
   },
   paymentButton: {
     backgroundColor: '#4CAF50',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
+    elevation: 5,
   },
   paymentButtonText: {
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
   },
-
   reviewsContainer: {
     padding: 10,
-    backgroundColor: '#f5f5f5',
+    marginBottom: 20,
   },
   reviewsTitle: {
     fontSize: 20,
@@ -677,7 +634,7 @@ const styles = StyleSheet.create({
   },
   star: {
     fontSize: 18,
-    color: '#FFD700', // Gold color for stars
+    color: '#FFD700',
     marginLeft: 2,
   },
   reviewText: {
