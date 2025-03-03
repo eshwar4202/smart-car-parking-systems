@@ -13,7 +13,7 @@ interface ParkingLot {
   };
 }
 
-interface FavLot {
+interface UserReview {
   lot_id: number;
   fav: boolean;
 }
@@ -24,7 +24,7 @@ export default function MapScreen() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchedLocation, setSearchedLocation] = useState<any>(null);
   const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]);
-  const [favLots, setFavLots] = useState<FavLot[]>([]); // Updated state for fav_lot
+  const [userReviews, setUserReviews] = useState<UserReview[]>([]); // New state for user reviews
 
   const navigation = useNavigation();
 
@@ -38,7 +38,7 @@ export default function MapScreen() {
 
       let currentLocation = await Location.getCurrentPositionAsync({});
       setLocation(currentLocation);
-      await Promise.all([fetchLots(), fetchFavLots()]); // Fetch parking lots and fav_lot
+      await Promise.all([fetchLots(), fetchUserReviews()]); // Fetch both parking lots and reviews
     }
 
     initialize();
@@ -60,19 +60,19 @@ export default function MapScreen() {
     }
   };
 
-  const fetchFavLots = async () => {
+  const fetchUserReviews = async () => {
     try {
       const { data, error } = await supabase
-        .from('fav_lot')
+        .from('user_review')
         .select('lot_id, fav')
         .order('lot_id');
 
       if (error) throw error;
 
-      setFavLots(data as FavLot[]);
+      setUserReviews(data as UserReview[]);
     } catch (err) {
-      console.error('Fetch fav lots error:', err);
-      Alert.alert('Error', 'Failed to fetch favorite lots');
+      console.error('Fetch user reviews error:', err);
+      Alert.alert('Error', 'Failed to fetch user reviews');
     }
   };
 
@@ -104,10 +104,10 @@ export default function MapScreen() {
     }
   };
 
-  // Function to determine marker color based on fav value from fav_lot
+  // Function to determine marker color based on fav value
   const getMarkerColor = (lotId: number) => {
-    const favLot = favLots.find((f) => f.lot_id === lotId);
-    return favLot && favLot.fav ? 'green' : 'red';
+    const review = userReviews.find((r) => r.lot_id === lotId);
+    return review && review.fav ? 'green' : 'red';
   };
 
   return (
@@ -149,7 +149,7 @@ export default function MapScreen() {
               }}
               title={`Parking ${lot.lot_id}`}
               description="This is a Parking Location"
-              pinColor={getMarkerColor(lot.lot_id)} // Use fav_lot data
+              pinColor={getMarkerColor(lot.lot_id)} // Dynamically set color based on fav
               onPress={() => navigation.navigate('Visualization', { lotId: lot.lot_id })}
             />
           ))}

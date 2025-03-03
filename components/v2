@@ -6,8 +6,6 @@ import {
   StyleSheet,
   FlatList,
   Alert,
-  Modal,
-  TextInput,
 } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 import { useNavigation } from '@react-navigation/native';
@@ -35,19 +33,13 @@ const decks = ['Upper Deck', 'Lower Deck'];
 
 // Review interface
 interface Review {
-  id: number;
-  user_id: string;
+  id: number; // For updating specific rows
+  user_id: string; // Updated to match column name
   profiles: {
     username: string;
   };
   rating: number;
   review: string;
-}
-
-// Favorite lot interface
-interface FavLot {
-  user_id: string;
-  lot_id: number;
   fav: boolean;
 }
 
@@ -65,15 +57,10 @@ const SmartParkingSystem = ({ route }) => {
   const [fromTime, setFromTime] = useState(new Date());
   const [toTime, setToTime] = useState(new Date());
   const [review, setReview] = useState<Review[]>([]);
-  const [favLots, setFavLots] = useState<FavLot[]>([]);
-  const [isReviewModalVisible, setReviewModalVisible] = useState(false);
-  const [newReviewText, setNewReviewText] = useState('');
-  const [newReviewRating, setNewReviewRating] = useState(0); // New state for rating
 
   useEffect(() => {
     fetchSlots();
     fetchReview();
-    fetchFavLots();
     if (session && session.user) {
       setUserId(session.user.id);
       console.log('User ID in SmartParkingSystem:', session.user.id);
@@ -109,29 +96,14 @@ const SmartParkingSystem = ({ route }) => {
     try {
       const { data, error } = await supabase
         .from('user_review')
-        .select('id, user_id, rating, review, profiles(username)')
+        .select('id, user_id, fav, rating, review, profiles(username)') // Updated to user_id
         .eq('lot_id', lotId)
         .order('id');
       if (error) throw error;
       setReview(data as Review[]);
-      console.log('Fetched reviews:', data);
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Failed to fetch reviews');
-    }
-  };
-
-  const fetchFavLots = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('fav_lot')
-        .select('user_id, lot_id, fav')
-        .eq('lot_id', lotId);
-      if (error) throw error;
-      setFavLots(data as FavLot[]);
-    } catch (err) {
-      console.error('Fetch Fav Lots Error:', err);
-      Alert.alert('Error', 'Failed to fetch favorite lots');
     }
   };
 
@@ -177,7 +149,7 @@ const SmartParkingSystem = ({ route }) => {
       };
 
       if (newStatus === SLOT_STATUS.RESERVED && userId) {
-        updateData.uid = userId;
+        updateData.uid = userId; // Assuming parking_slots uses uid, not user_id
         updateData.from = fromTime.toISOString();
         updateData.to = toTime.toISOString();
         console.log('Booking slot with:', {
@@ -329,82 +301,47 @@ const SmartParkingSystem = ({ route }) => {
 
   const toggleFavorite = async () => {
     if (!userId) {
-      Alert.alert('Error', 'You must be logged in to favorite lots.');
+      Alert.alert('Error', 'You must be logged in to favorite reviews.');
       return;
     }
 
     try {
-      const userFav = favLots.find((f) => f.user_id === userId && f.lot_id === lotId);
-      const newFavValue = userFav ? !userFav.fav : true;
+      // Find the user's review (if any)
+      const userReview = review.find((r) => r.user_id === userId);
+      const newFavValue = userReview ? !userReview.fav : true; // Toggle if exists, set to true if new
 
-      if (userFav) {
+      if (userReview) {
+        // Update existing review
         const { error } = await supabase
-          .from('fav_lot')
+          .from('user_review')
           .update({ fav: newFavValue })
-          .eq('user_id', userId)
-          .eq('lot_id', lotId);
+          .eq('id', userReview.id);
 
         if (error) throw error;
 
-        setFavLots((prev) =>
-          prev.map((f) =>
-            f.user_id === userId && f.lot_id === lotId ? { ...f, fav: newFavValue } : f
+        setReview((prev) =>
+          prev.map((r) =>
+            r.id === userReview.id ? { ...r, fav: newFavValue } : r
           )
         );
       } else {
+        // Insert a new review with fav: true
         const { error } = await supabase
-          .from('fav_lot')
+          .from('user_review')
           .insert({
-            user_id: userId,
+            user_id: userId, // Updated to user_id
             lot_id: lotId,
             fav: true,
+            rating: 0, // Default value, adjust as needed
+            review: '', // Default empty review
           });
 
         if (error) throw error;
-        fetchFavLots();
+        fetchReview(); // Refresh reviews after insertion
       }
     } catch (err) {
       console.error('Toggle Favorite Error:', err);
-      Alert.alert('Error', 'Failed to update favorite status: ' + err.message);
-    }
-  };
-
-  const handleAddReview = () => {
-    console.log('Add Review button pressed');
-    setReviewModalVisible(true);
-  };
-
-  const submitReview = async () => {
-    if (!newReviewText || newReviewText.trim() === '') {
-      Alert.alert('Error', 'Review cannot be empty.');
-      return;
-    }
-    if (newReviewRating < 1 || newReviewRating > 5) {
-      Alert.alert('Error', 'Please select a rating between 1 and 5.');
-      return;
-    }
-
-    try {
-      console.log('Submitting review:', { text: newReviewText, rating: newReviewRating });
-      const { error } = await supabase
-        .from('user_review')
-        .insert({
-          user_id: userId,
-          lot_id: lotId,
-          rating: newReviewRating, // Include rating
-          review: newReviewText.trim(),
-        });
-
-      if (error) throw error;
-
-      fetchReview();
-      setReviewModalVisible(false);
-      setNewReviewText('');
-      setNewReviewRating(0); // Reset rating
-      Alert.alert('Success', 'Review submitted successfully!');
-    } catch (err) {
-      console.error('Add Review Error:', err);
-      Alert.alert('Error', 'Failed to submit review: ' + err.message);
+      Alert.alert('Error', 'Failed to update favorite status.');
     }
   };
 
@@ -492,32 +429,8 @@ const SmartParkingSystem = ({ route }) => {
     );
   };
 
-  const renderRatingStars = () => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <TouchableOpacity
-          key={i}
-          onPress={() => setNewReviewRating(i)}
-          style={styles.starButton}
-        >
-          <Text style={newReviewRating >= i ? styles.filledStar : styles.emptyStar}>
-            ★
-          </Text>
-        </TouchableOpacity>
-      );
-    }
-    return (
-      <View style={styles.ratingRow}>
-        {stars}
-      </View>
-    );
-  };
-
-  const isFavorited = favLots.some(
-    (f) => f.user_id === userId && f.lot_id === lotId && f.fav === true
-  );
-  const hasReviewed = review.some((r) => r.user_id === userId);
+  // Check if the current user's review is favorited
+  const isFavorited = review.some((r) => r.user_id === userId && r.fav === true);
 
   const renderItem = ({ item }) => {
     switch (item.type) {
@@ -634,7 +547,6 @@ const SmartParkingSystem = ({ route }) => {
         date={toTime}
       />
 
-      {/* Payment Button */}
       {selectedSlots.length > 0 && (
         <View style={styles.paymentButtonContainer}>
           <TouchableOpacity style={styles.paymentButton} onPress={goToPayment}>
@@ -644,55 +556,6 @@ const SmartParkingSystem = ({ route }) => {
           </TouchableOpacity>
         </View>
       )}
-
-      {/* Add Review Button */}
-      {!hasReviewed && userId && (
-        <View style={styles.addReviewButtonContainer}>
-          <TouchableOpacity style={styles.addReviewButton} onPress={handleAddReview}>
-            <Text style={styles.addReviewButtonText}>Add Review</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Review Modal */}
-      <Modal
-        visible={isReviewModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setReviewModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Add Review</Text>
-            <Text style={styles.ratingLabel}>Rate this parking lot:</Text>
-            {renderRatingStars()}
-            <TextInput
-              style={styles.reviewInput}
-              placeholder="Enter your review..."
-              value={newReviewText}
-              onChangeText={setNewReviewText}
-              multiline
-            />
-            <View style={styles.modalButtonRow}>
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={() => {
-                  setReviewModalVisible(false);
-                  setNewReviewRating(0); // Reset rating on cancel
-                }}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.submitButton]}
-                onPress={submitReview}
-              >
-                <Text style={styles.modalButtonText}>Submit</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -704,7 +567,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 10,
-    paddingBottom: 150,
+    paddingBottom: 100,
   },
   infoCard: {
     backgroundColor: '#fff',
@@ -725,7 +588,7 @@ const styles = StyleSheet.create({
   },
   favStar: {
     fontSize: 24,
-    color: '#FFD700',
+    color: '#FFD700', // Gold color for star
   },
   timeButton: {
     backgroundColor: '#e0e0e0',
@@ -782,7 +645,7 @@ const styles = StyleSheet.create({
   },
   paymentButtonContainer: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 20,
     left: 20,
     right: 20,
     zIndex: 10,
@@ -795,25 +658,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   paymentButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  addReviewButtonContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    zIndex: 10,
-  },
-  addReviewButton: {
-    backgroundColor: '#1E3A8A',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    elevation: 5,
-  },
-  addReviewButtonText: {
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
@@ -868,75 +712,6 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     padding: 20,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContainer: {
-    width: '80%',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  ratingLabel: {
-    fontSize: 16,
-    marginBottom: 10,
-    color: '#333',
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 15,
-  },
-  starButton: {
-    padding: 5,
-  },
-  filledStar: {
-    fontSize: 30,
-    color: '#FFD700',
-  },
-  emptyStar: {
-    fontSize: 30,
-    color: '#ccc',
-  },
-  reviewInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    minHeight: 100,
-    marginBottom: 15,
-    textAlignVertical: 'top',
-  },
-  modalButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  modalButton: {
-    flex: 1,
-    padding: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-    backgroundColor: '#e0e0e0',
-    marginHorizontal: 5,
-  },
-  submitButton: {
-    backgroundColor: '#1E3A8A',
-  },
-  modalButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 
