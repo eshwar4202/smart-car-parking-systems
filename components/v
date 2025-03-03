@@ -14,6 +14,11 @@ const SLOT_STATUS = {
   OCCUPIED: 'occupied',
 };
 
+const SLOT_ACTIONS = {
+  MODIFY: 'Modify Booking',
+  CANCEL: 'Cancel Booking',
+};
+
 const PRICE_PER_SLOT = 200;
 const decks = ['Upper Deck', 'Lower Deck'];
 
@@ -23,6 +28,8 @@ const SmartParkingSystem = ({ route }) => {
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [userId, setUserId] = useState(null);
   const [selectedSlotId, setSelectedSlotId] = useState(null);
+  const [isModifying, setIsModifying] = useState(false);
+  const [modifyingSlotId, setModifyingSlotId] = useState(null);
   const navigation = useNavigation();
 
   const [isFromPickerVisible, setFromPickerVisible] = useState(false);
@@ -91,13 +98,17 @@ const SmartParkingSystem = ({ route }) => {
         )
       );
 
-      if (newStatus === SLOT_STATUS.RESERVED) {
+      if (newStatus === SLOT_STATUS.RESERVED && !isModifying) {
         setSelectedSlots((prev) => [...prev, slotId]);
-      } else {
+      } else if (newStatus === SLOT_STATUS.EMPTY) {
         setSelectedSlots((prev) => prev.filter((id) => id !== slotId));
       }
 
       fetchSlots();
+
+      if (isModifying) {
+        Alert.alert('Success', 'Booking updated successfully');
+      }
     } catch (err) {
       console.error('Update Slot Error:', err);
       Alert.alert('Error', err.message || 'Failed to update the slot status.');
@@ -114,8 +125,8 @@ const SmartParkingSystem = ({ route }) => {
       setSelectedSlotId(slot.id);
       setFromPickerVisible(true);
     } else if (slot.status === SLOT_STATUS.RESERVED) {
-      if (selectedSlots.includes(slot.id)) {
-        updateSlot(slot.id, SLOT_STATUS.EMPTY);
+      if (slot.uid === userId) {
+        showBookingOptions(slot);
       } else {
         Alert.alert('Slot Reserved', 'This slot is already reserved by someone else.');
       }
@@ -124,20 +135,43 @@ const SmartParkingSystem = ({ route }) => {
     }
   };
 
-  const getTimeLimits = () => {
-    const now = new Date();
-    const minTime = new Date(now);
-    minTime.setHours(7, 0, 0, 0); // 7:00 AM today
-    const maxTime = new Date(now);
-    maxTime.setHours(22, 0, 0, 0); // 10:00 PM today
-    return { minTime, maxTime };
+  const showBookingOptions = (slot) => {
+    Alert.alert(
+      'Booking Options',
+      `Slot ${slot.id}`,
+      [
+        {
+          text: SLOT_ACTIONS.MODIFY,
+          onPress: () => {
+            setModifyingSlotId(slot.id);
+            setIsModifying(true);
+            setFromTime(new Date(slot.from));
+            setToTime(new Date(slot.to));
+            setFromPickerVisible(true);
+          },
+        },
+        {
+          text: SLOT_ACTIONS.CANCEL,
+          onPress: () => updateSlot(slot.id, SLOT_STATUS.EMPTY),
+        },
+        {
+          text: 'Close',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const isTimeWithinRange = (date) => {
+    const hours = date.getHours();
+    return hours >= 7 && hours < 22;
   };
 
   const handleFromConfirm = (date) => {
-    const { minTime, maxTime } = getTimeLimits();
     setFromPickerVisible(false);
 
-    if (date < minTime || date > maxTime) {
+    if (!isTimeWithinRange(date)) {
       Alert.alert('Invalid Time', 'Please select a time between 7:00 AM and 10:00 PM.');
       return;
     }
@@ -147,10 +181,9 @@ const SmartParkingSystem = ({ route }) => {
   };
 
   const handleToConfirm = (date) => {
-    const { minTime, maxTime } = getTimeLimits();
     setToPickerVisible(false);
 
-    if (date < minTime || date > maxTime) {
+    if (!isTimeWithinRange(date)) {
       Alert.alert('Invalid Time', 'Please select a time between 7:00 AM and 10:00 PM.');
       return;
     }
@@ -161,7 +194,12 @@ const SmartParkingSystem = ({ route }) => {
     }
 
     setToTime(date);
-    if (selectedSlotId) {
+
+    if (isModifying && modifyingSlotId) {
+      updateSlot(modifyingSlotId, SLOT_STATUS.RESERVED);
+      setIsModifying(false);
+      setModifyingSlotId(null);
+    } else if (selectedSlotId) {
       updateSlot(selectedSlotId, SLOT_STATUS.RESERVED);
     } else {
       Alert.alert('Error', 'No slot selected.');
@@ -225,8 +263,6 @@ const SmartParkingSystem = ({ route }) => {
     }
   };
 
-  const { minTime, maxTime } = getTimeLimits();
-
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -241,7 +277,7 @@ const SmartParkingSystem = ({ route }) => {
             onPress={() => setFromPickerVisible(true)}
           >
             <Text style={styles.timeButtonText}>
-              From: {fromTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              From: {fromTime.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -249,7 +285,7 @@ const SmartParkingSystem = ({ route }) => {
             onPress={() => setToPickerVisible(true)}
           >
             <Text style={styles.timeButtonText}>
-              To: {toTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              To: {toTime.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
             </Text>
           </TouchableOpacity>
           <Text style={styles.infoText}>Booking available: 7:00 AM - 10:00 PM</Text>
@@ -281,19 +317,27 @@ const SmartParkingSystem = ({ route }) => {
         isVisible={isFromPickerVisible}
         mode="datetime"
         onConfirm={handleFromConfirm}
-        onCancel={() => setFromPickerVisible(false)}
+        onCancel={() => {
+          setFromPickerVisible(false);
+          if (isModifying) {
+            setIsModifying(false);
+            setModifyingSlotId(null);
+          }
+        }}
         date={fromTime}
-        minimumDate={minTime}
-        maximumDate={maxTime}
       />
       <DateTimePickerModal
         isVisible={isToPickerVisible}
         mode="datetime"
         onConfirm={handleToConfirm}
-        onCancel={() => setToPickerVisible(false)}
+        onCancel={() => {
+          setToPickerVisible(false);
+          if (isModifying) {
+            setIsModifying(false);
+            setModifyingSlotId(null);
+          }
+        }}
         date={toTime}
-        minimumDate={minTime}
-        maximumDate={maxTime}
       />
 
       {selectedSlots.length > 0 && (

@@ -5,65 +5,57 @@ import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
-interface ParkingLot {
-  lot_id: number;
-  location: {
-    latitude: number;
-    longitude: number;
-  };
-}
-
 export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchedLocation, setSearchedLocation] = useState<any>(null);
-  const [parkingLots, setParkingLots] = useState<ParkingLot[]>([]); // New state for parking lots
 
   const navigation = useNavigation();
 
   useEffect(() => {
-    async function initialize() {
+    async function getCurrentLocation() {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setErrorMsg('Permission to access location was denied');
         return;
       }
 
-      let currentLocation = await Location.getCurrentPositionAsync({});
-      setLocation(currentLocation);
-      await fetchLots(); // Wait for parking lots to be fetched
+      let location = await Location.getCurrentPositionAsync({});
+      setLocation(location);
+      await fetchLots();
     }
 
-    initialize();
+    getCurrentLocation();
+
   }, []);
 
   const fetchLots = async () => {
     try {
       const { data, error } = await supabase
         .from('parking_lots')
-        .select('lot_id, location') // Include lot_id and location
+        .select('lot_id, location')
         .order('lot_id');
 
-      if (error) throw error;
-
-      // Type the data and set it to state
-      setParkingLots(data as ParkingLot[]);
+      if (error) throw error
+      console.log(data[0].location.latitude);
     } catch (err) {
-      console.error('Fetch lots error:', err);
-      Alert.alert('Error', 'Failed to fetch the lots');
+      console.error('Fetch lots eror:', err);
+      Alert.alert('Error', 'failed to fetch the lots');
     }
-  };
-
+  }
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
 
     try {
+      // Using Expo Location to geocode the address
       const results = await Location.geocodeAsync(searchQuery);
+
       if (results.length > 0) {
         const { latitude, longitude } = results[0];
         setSearchedLocation({ latitude, longitude });
 
+        // Update the map region
         if (location) {
           setLocation({
             ...location,
@@ -85,6 +77,7 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -98,6 +91,7 @@ export default function MapScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Map or Error Message */}
       {errorMsg ? (
         <Text style={styles.errorText}>{errorMsg}</Text>
       ) : location ? (
@@ -112,19 +106,16 @@ export default function MapScreen() {
           showsUserLocation
           showsMyLocationButton
         >
-          {/* Markers for parking lots */}
-          {parkingLots.map((lot) => (
-            <Marker
-              key={lot.lot_id}
-              coordinate={{
-                latitude: lot.location.latitude,
-                longitude: lot.location.longitude,
-              }}
-              title={`Parking ${lot.lot_id}`}
-              description="This is a Parking Location"
-              onPress={() => navigation.navigate('Visualization', { lotId: lot.lot_id })}
-            />
-          ))}
+          {/* Marker for current location */}
+          <Marker
+            coordinate={{
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude + 0.005,
+            }}
+            title="Parking 1"
+            description="This is a Parking Location"
+            onPress={() => navigation.navigate('Visualization')}
+          />
 
           {/* Marker for searched location */}
           {searchedLocation && (

@@ -1,9 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  FlatList,
+  Alert,
+} from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 import { useNavigation } from '@react-navigation/native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
+// Supabase setup and constants remain unchanged
 const supabaseUrl = 'https://velagnrotxuqhiczsczz.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlbGFnbnJvdHh1cWhpY3pzY3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MjkxMjcsImV4cCI6MjA1NTIwNTEyN30.Xpr6wjdZdL6KN4gcZZ_q0aHOLpN3aAcG89uso0a_Fsw';
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -14,30 +22,51 @@ const SLOT_STATUS = {
   OCCUPIED: 'occupied',
 };
 
+const SLOT_ACTIONS = {
+  MODIFY: 'Modify Booking',
+  CANCEL: 'Cancel Booking',
+};
+
 const PRICE_PER_SLOT = 200;
 const decks = ['Upper Deck', 'Lower Deck'];
 
+interface Review {
+  profiles: {
+    username: string;
+  };
+  rating: number;
+  review: string;
+}
+
 const SmartParkingSystem = ({ route }) => {
-  const { session } = route.params;
+  const { session, lotId } = route.params;
   const [slots, setSlots] = useState([]);
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [userId, setUserId] = useState(null);
   const [selectedSlotId, setSelectedSlotId] = useState(null);
+  const [isModifying, setIsModifying] = useState(false);
+  const [modifyingSlotId, setModifyingSlotId] = useState(null);
   const navigation = useNavigation();
 
   const [isFromPickerVisible, setFromPickerVisible] = useState(false);
   const [isToPickerVisible, setToPickerVisible] = useState(false);
   const [fromTime, setFromTime] = useState(new Date());
   const [toTime, setToTime] = useState(new Date());
+  const [review, SetReview] = useState<Review[]>([]);
 
   useEffect(() => {
     fetchSlots();
+    fetchReview();
     if (session && session.user) {
       setUserId(session.user.id);
       console.log('User ID in SmartParkingSystem:', session.user.id);
     } else {
       console.log('No session in SmartParkingSystem');
     }
+
+    const intervalId = setInterval(checkAndCancelExpiredBookings, 3000);
+
+    return () => clearInterval(intervalId);
   }, [session]);
 
   const fetchSlots = async () => {
@@ -45,6 +74,7 @@ const SmartParkingSystem = ({ route }) => {
       const { data, error } = await supabase
         .from('parking_slots')
         .select('*, profiles(username)')
+        .eq('lot_id', lotId)
         .order('id');
 
       if (error) throw error;
@@ -55,6 +85,44 @@ const SmartParkingSystem = ({ route }) => {
     } catch (err) {
       console.error('Fetch Slots Error:', err);
       Alert.alert('Error', 'Failed to fetch parking slots.');
+    }
+  };
+
+  const fetchReview = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_review')
+        .select('*, profiles(username)')
+        .eq('lot_id', lotId)
+        .order('id');
+      if (error) throw error;
+      SetReview(data as Review[]);
+    } catch (err) {
+      console.error(err);
+      Alert.alert('err', 'Failed to fetch review');
+    }
+  }
+
+  const checkAndCancelExpiredBookings = async () => {
+    try {
+      const currentTime = new Date();
+      const expiredSlots = slots.filter(
+        (slot) =>
+          slot.status === SLOT_STATUS.RESERVED &&
+          slot.to &&
+          new Date(slot.to) < currentTime
+      );
+
+      for (const slot of expiredSlots) {
+        await updateSlot(slot.id, SLOT_STATUS.EMPTY);
+      }
+
+      if (expiredSlots.length > 0) {
+        console.log(`Cancelled ${expiredSlots.length} expired bookings.`);
+        fetchSlots(); // Refresh slots after updates
+      }
+    } catch (err) {
+      console.error('Error checking expired bookings:', err);
     }
   };
 
@@ -91,13 +159,18 @@ const SmartParkingSystem = ({ route }) => {
         )
       );
 
-      if (newStatus === SLOT_STATUS.RESERVED) {
+      if (newStatus === SLOT_STATUS.RESERVED && !isModifying) {
         setSelectedSlots((prev) => [...prev, slotId]);
-      } else {
+      } else if (newStatus === SLOT_STATUS.EMPTY) {
         setSelectedSlots((prev) => prev.filter((id) => id !== slotId));
       }
 
       fetchSlots();
+
+
+      if (isModifying) {
+        Alert.alert('Success', 'Booking updated successfully');
+      }
     } catch (err) {
       console.error('Update Slot Error:', err);
       Alert.alert('Error', err.message || 'Failed to update the slot status.');
@@ -114,8 +187,8 @@ const SmartParkingSystem = ({ route }) => {
       setSelectedSlotId(slot.id);
       setFromPickerVisible(true);
     } else if (slot.status === SLOT_STATUS.RESERVED) {
-      if (selectedSlots.includes(slot.id)) {
-        updateSlot(slot.id, SLOT_STATUS.EMPTY);
+      if (slot.uid === userId) {
+        showBookingOptions(slot);
       } else {
         Alert.alert('Slot Reserved', 'This slot is already reserved by someone else.');
       }
@@ -124,9 +197,37 @@ const SmartParkingSystem = ({ route }) => {
     }
   };
 
+  const showBookingOptions = (slot) => {
+    Alert.alert(
+      'Booking Options',
+      `Slot ${slot.id}`,
+      [
+        {
+          text: SLOT_ACTIONS.MODIFY,
+          onPress: () => {
+            setModifyingSlotId(slot.id);
+            setIsModifying(true);
+            setFromTime(new Date(slot.from));
+            setToTime(new Date(slot.to));
+            setFromPickerVisible(true);
+          },
+        },
+        {
+          text: SLOT_ACTIONS.CANCEL,
+          onPress: () => updateSlot(slot.id, SLOT_STATUS.EMPTY),
+        },
+        {
+          text: 'Close',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const isTimeWithinRange = (date) => {
     const hours = date.getHours();
-    return hours >= 7 && hours < 22; // 7:00 AM to 10:00 PM
+    return hours >= 7 && hours < 22;
   };
 
   const handleFromConfirm = (date) => {
@@ -155,7 +256,12 @@ const SmartParkingSystem = ({ route }) => {
     }
 
     setToTime(date);
-    if (selectedSlotId) {
+
+    if (isModifying && modifyingSlotId) {
+      updateSlot(modifyingSlotId, SLOT_STATUS.RESERVED);
+      setIsModifying(false);
+      setModifyingSlotId(null);
+    } else if (selectedSlotId) {
       updateSlot(selectedSlotId, SLOT_STATUS.RESERVED);
     } else {
       Alert.alert('Error', 'No slot selected.');
@@ -179,22 +285,22 @@ const SmartParkingSystem = ({ route }) => {
     });
   };
 
-  const renderSlot = ({ item }) => (
+  const renderSlot = (slot) => (
     <TouchableOpacity
       style={[
         styles.slot,
-        getSlotStyle(item.status, item.uid),
-        selectedSlots.includes(item.id) && styles.selectedSlot,
+        getSlotStyle(slot.status, slot.uid),
+        selectedSlots.includes(slot.id) && styles.selectedSlot,
       ]}
-      onPress={() => handleSlotPress(item)}
+      onPress={() => handleSlotPress(slot)}
     >
-      <Text style={styles.slotText}>{item.id}</Text>
+      <Text style={styles.slotText}>{slot.id}</Text>
       {(() => {
-        if (item.profiles && item.uid !== userId) {
+        if (slot.profiles && slot.uid !== userId) {
           return <Text style={styles.slotInfo}>Booked</Text>;
-        } else if (item.uid === userId) {
+        } else if (slot.uid === userId) {
           return <Text style={styles.slotInfo}>Booked by you</Text>;
-        } else if (!item.profiles && item.status === SLOT_STATUS.OCCUPIED) {
+        } else if (!slot.profiles && slot.status === SLOT_STATUS.OCCUPIED) {
           return <Text style={styles.slotInfo}>Booked</Text>;
         } else {
           return <Text style={styles.slotInfo}>Available</Text>;
@@ -219,9 +325,109 @@ const SmartParkingSystem = ({ route }) => {
     }
   };
 
+  const prepareFlatListData = () => {
+    const data = [
+      { type: 'header', id: 'info-card' },
+    ];
+
+    decks.forEach((deck) => {
+      const deckSlots = slots.filter(
+        (slot) => slot.deck.trim().toLowerCase() === deck.trim().toLowerCase()
+      );
+      if (deckSlots.length > 0) {
+        data.push({ type: 'deck-title', id: `deck-${deck}`, title: deck });
+        data.push({ type: 'slots', id: `slots-${deck}`, slots: deckSlots });
+      } else {
+        data.push({ type: 'deck-title', id: `deck-${deck}`, title: deck });
+        data.push({ type: 'no-slots', id: `no-slots-${deck}` });
+      }
+    });
+
+    return data;
+  };
+
+  const ReviewCard = ({ review, username, rating }) => {
+    const renderStars = (rating) => {
+      const stars = [];
+      for (let i = 1; i <= 5; i++) {
+        stars.push(
+          <Text key={i} style={styles.star}>
+            {i <= rating ? '★' : '☆'}
+          </Text>
+        );
+      }
+      return stars;
+    };
+
+    return (
+      <View style={styles.reviewCard}>
+        <View style={styles.reviewHeader}>
+          <Text style={styles.reviewUsername}>{username}</Text>
+          <View style={styles.ratingContainer}>
+            {renderStars(rating)}
+          </View>
+        </View>
+        <Text style={styles.reviewText}>{review}</Text>
+      </View>
+    );
+  };
+
+  const renderItem = ({ item }) => {
+    switch (item.type) {
+      case 'header':
+        return (
+          <View style={styles.infoCard}>
+            <Text style={styles.infoText}>Price per slot: ₹{PRICE_PER_SLOT}</Text>
+            <Text style={styles.infoText}>
+              Selected slots: {selectedSlots.length}
+              {selectedSlots.length > 0 ? ` (₹${selectedSlots.length * PRICE_PER_SLOT})` : ''}
+            </Text>
+            <TouchableOpacity
+              style={styles.timeButton}
+              onPress={() => setFromPickerVisible(true)}
+            >
+              <Text style={styles.timeButtonText}>
+                From: {fromTime.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.timeButton}
+              onPress={() => setToPickerVisible(true)}
+            >
+              <Text style={styles.timeButtonText}>
+                To: {toTime.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.infoText}>Booking available: 7:00 AM - 10:00 PM</Text>
+          </View>
+        );
+      case 'deck-title':
+        return (
+          <View style={styles.deck}>
+            <Text style={styles.deckTitle}>{item.title}</Text>
+          </View>
+        );
+      case 'slots':
+        return (
+          <FlatList
+            data={item.slots}
+            renderItem={({ item }) => renderSlot(item)}
+            keyExtractor={(slot) => slot.id.toString()}
+            numColumns={3}
+            scrollEnabled={false}
+          />
+        );
+      case 'no-slots':
+        return <Text>No slots available for this deck.</Text>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <View style={styles.container}>
       <FlatList
+<<<<<<< HEAD
       ListHeaderComponent={
         <View style={styles.infoCard}>
           <Text style={styles.infoText}>Price per slot: ₹{PRICE_PER_SLOT}</Text>
@@ -273,19 +479,38 @@ data={decks}
       }}
       contentContainerStyle={styles.scrollContent}
     />
+=======
+        data={prepareFlatListData()}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.scrollContent}
+      />
+>>>>>>> ad481a4e (user_review)
 
       <DateTimePickerModal
         isVisible={isFromPickerVisible}
         mode="datetime"
         onConfirm={handleFromConfirm}
-        onCancel={() => setFromPickerVisible(false)}
+        onCancel={() => {
+          setFromPickerVisible(false);
+          if (isModifying) {
+            setIsModifying(false);
+            setModifyingSlotId(null);
+          }
+        }}
         date={fromTime}
       />
       <DateTimePickerModal
         isVisible={isToPickerVisible}
         mode="datetime"
         onConfirm={handleToConfirm}
-        onCancel={() => setToPickerVisible(false)}
+        onCancel={() => {
+          setToPickerVisible(false);
+          if (isModifying) {
+            setIsModifying(false);
+            setModifyingSlotId(null);
+          }
+        }}
         date={toTime}
       />
 
@@ -298,6 +523,27 @@ data={decks}
           </TouchableOpacity>
         </View>
       )}
+
+      <View style={styles.reviewsContainer}>
+        <Text style={styles.reviewsTitle}>Reviews</Text>
+        {review.length > 0 ? (
+          <FlatList
+            data={review}
+            renderItem={({ item }) => (
+              <ReviewCard
+                review={item.review}
+                username={item.profiles?.username || 'Anonymous'}
+                rating={item.rating}
+              />
+            )}
+            keyExtractor={(item) => item.id.toString()}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <Text style={styles.noReviewsText}>No reviews yet</Text>
+        )}
+      </View>
+
     </View>
   );
 };
@@ -392,6 +638,58 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+
+  reviewsContainer: {
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+  },
+  reviewsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  reviewCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  reviewUsername: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+  },
+  star: {
+    fontSize: 18,
+    color: '#FFD700', // Gold color for stars
+    marginLeft: 2,
+  },
+  reviewText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  noReviewsText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    padding: 20,
   },
 });
 
