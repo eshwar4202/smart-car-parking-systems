@@ -16,7 +16,7 @@ export default function ForgotPasswordScreen({ navigation }) {
   async function handleForgotPassword() {
     const { data: user, error } = await supabase.auth.signInWithPassword({
       email,
-      password: 'pavethran', // Temporary workaround, not secure
+      password: 'pavethran42', // Temporary workaround, not secure
     });
 
     if (error) {
