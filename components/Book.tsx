@@ -1,3 +1,4 @@
+// Full update of Book.tsx with DateTimePickerModal integration and time validation
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -14,6 +15,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { Svg, Circle } from "react-native-svg";
 import { useNavigation } from "@react-navigation/native";
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 export default function ParkingSlots({ route }) {
   const { session } = route.params;
@@ -21,21 +23,38 @@ export default function ParkingSlots({ route }) {
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
   const [userId, setUserId] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(0);
+
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [selectedSlotId, setSelectedSlotId] = useState(null);
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
 
+  const [showTimePickerModal, setShowTimePickerModal] = useState(false);
+  const [newFromTime, setNewFromTime] = useState(new Date());
+  const [newToTime, setNewToTime] = useState(new Date());
+  const [isFromPickerVisible, setFromPickerVisible] = useState(false);
+  const [isToPickerVisible, setToPickerVisible] = useState(false);
+
   useEffect(() => {
-    if (session && session.user) {
-      setUserId(session.user.id);
-    }
+    if (session?.user) setUserId(session.user.id);
   }, [session]);
 
   useEffect(() => {
     if (userId) {
+      fetchWalletBalance();
       fetchParkingSlots();
     }
   }, [userId]);
+
+  async function fetchWalletBalance() {
+    const { data, error } = await supabase
+      .from("wallets")
+      .select("balance")
+      .eq("user_id", userId)
+      .single();
+
+    if (!error && data) setWalletBalance(data.balance);
+  }
 
   async function fetchParkingSlots() {
     setLoading(true);
@@ -57,99 +76,100 @@ export default function ParkingSlots({ route }) {
     }
   }
 
-  async function cancelSlot(slotId) {
-    setSelectedSlotId(slotId);
+  const handleCancelClick = (slot) => {
+    setSelectedSlot(slot);
     setShowCancelModal(true);
-  }
+  };
 
-  async function handleCancelConfirmation() {
+  const handleChangeTiming = async () => {
+    if (!selectedSlot) return;
+
+    if (newFromTime >= newToTime) {
+      Alert.alert("Error", "Start time cannot exceed or be equal to end time.");
+      return;
+    }
+
+    if (walletBalance < 50) {
+      Alert.alert("Error", "Insufficient balance to change timings (Rs 50 required)");
+      return;
+    }
+
+    try {
+      await supabase
+        .from("parking_slots")
+        .update({ from: newFromTime.toISOString(), to: newToTime.toISOString() })
+        .eq("id", selectedSlot.id)
+        .eq("uid", userId);
+
+      await supabase
+        .from("wallets")
+        .update({ balance: walletBalance - 50 })
+        .eq("user_id", userId);
+
+      await supabase
+        .from("transactions")
+        .insert({
+          user_id: userId,
+          transaction_type: "TIMING CHANGE FEE",
+          amount: -50,
+          created_at: new Date().toISOString()
+        });
+
+      Alert.alert("Success", "Timings updated. Rs 50 deducted from wallet.");
+      fetchWalletBalance();
+      fetchParkingSlots();
+    } catch (err) {
+      console.error("Error updating timing:", err);
+      Alert.alert("Error", "Failed to update timings.");
+    } finally {
+      setShowTimePickerModal(false);
+      setSelectedSlot(null);
+    }
+  };
+
+  const handleFinalCancel = async () => {
     if (!cancelReason.trim()) {
       Alert.alert("Error", "Please provide a reason for cancellation");
       return;
     }
 
     try {
-      // Check if wallet exists
-      let { data: walletData, error: walletError } = await supabase
-        .from("wallets")
-        .select("balance")
-        .eq("user_id", userId)
-        .single();
-
-      if (walletError && walletError.code === "PGRST116") {
-        // Wallet doesn't exist, create one with initial balance
-        const { data: newWallet, error: createError } = await supabase
-          .from("wallets")
-          .insert({ user_id: userId, balance: 100 })
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        walletData = newWallet;
-      } else if (walletError) {
-        throw walletError;
-      }
-
-      if (!walletData || walletData.balance < 10) {
-        Alert.alert("Error", "Insufficient balance in your wallet");
+      if (walletBalance < 10) {
+        Alert.alert("Error", "Insufficient balance to cancel (Rs 10 required)");
         return;
       }
 
-      // Update parking slot
-      const { error: slotError } = await supabase
+      await supabase
         .from("parking_slots")
         .update({ status: "empty", uid: null, from: null, to: null })
-        .eq("id", selectedSlotId)
+        .eq("id", selectedSlot.id)
         .eq("uid", userId);
 
-      if (slotError) throw slotError;
-
-      // Deduct from wallet
-      const { error: deductError } = await supabase
+      await supabase
         .from("wallets")
-        .update({ balance: walletData.balance - 10 })
+        .update({ balance: walletBalance - 10 })
         .eq("user_id", userId);
 
-      if (deductError) throw deductError;
-
-      // Insert cancellation record
-      const { error: cancelError } = await supabase
+      await supabase
         .from("cancel")
-        .insert({
-          user_id: userId,
-          message: cancelReason,
-          slot_id: selectedSlotId,
-          created_at: new Date().toISOString()
-        });
+        .insert({ user_id: userId, message: cancelReason, slot_id: selectedSlot.id, created_at: new Date().toISOString() });
 
-      if (cancelError) throw cancelError;
-
-      // Insert transaction record
-      const { error: transactionError } = await supabase
+      await supabase
         .from("transactions")
-        .insert({
-          user_id: userId,
-          transaction_type: "CANCELLATION FEE",
-          amount: -10,  // Negative amount since it's a deduction
-          created_at: new Date().toISOString()  // Optional: if you want to track when it happened
-        });
+        .insert({ user_id: userId, transaction_type: "CANCELLATION FEE", amount: -10, created_at: new Date().toISOString() });
 
-      if (transactionError) throw transactionError;
-
-      Alert.alert(
-        "Cancellation Successful",
-        "Deducted Rs 10 from your wallet",
-        [{ text: "OK", onPress: () => fetchParkingSlots() }]
-      );
-
+      Alert.alert("Cancelled", "Rs 10 deducted from wallet.");
+      fetchWalletBalance();
+      fetchParkingSlots();
+    } catch (err) {
+      console.error("Error cancelling:", err);
+      Alert.alert("Error", "Failed to cancel slot.");
+    } finally {
       setShowCancelModal(false);
       setCancelReason("");
-      setSelectedSlotId(null);
-    } catch (err) {
-      console.error("Error cancelling slot:", err);
-      Alert.alert("Error", "Failed to cancel slot. Please try again.");
+      setSelectedSlot(null);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -166,46 +186,49 @@ export default function ParkingSlots({ route }) {
         data={parkingSlots}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <ParkingSlotCard slot={item} navigation={navigation} onCancel={cancelSlot} />
+          <ParkingSlotCard slot={item} onCancel={handleCancelClick} />
         )}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={<Text>No booked slots found</Text>}
       />
 
-      <Modal
-        visible={showCancelModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowCancelModal(false)}
-      >
+      <Modal visible={showCancelModal} transparent animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Cancel Booking</Text>
-            <Text style={styles.modalSubtitle}>
-              Please provide a reason for cancellation (Rs 10 will be deducted):
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter cancellation reason"
-              value={cancelReason}
-              onChangeText={setCancelReason}
-              multiline
+            <Text style={styles.modalTitle}>Cancel or Change Booking</Text>
+            <Button title="Change Timings (Rs 50)" onPress={() => { setShowCancelModal(false); setShowTimePickerModal(true); }} />
+            <TextInput placeholder="Reason for cancellation (Rs 10)" style={styles.input} value={cancelReason} onChangeText={setCancelReason} multiline />
+            <Button title="Confirm Cancellation" onPress={handleFinalCancel} color="#d9534f" />
+            <Button title="Close" onPress={() => setShowCancelModal(false)} />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showTimePickerModal} transparent animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select New Timing</Text>
+
+            <Button title="Set New From Time" onPress={() => setFromPickerVisible(true)} />
+            <DateTimePickerModal
+              isVisible={isFromPickerVisible}
+              mode="datetime"
+              onConfirm={(date) => { setNewFromTime(date); setFromPickerVisible(false); }}
+              onCancel={() => setFromPickerVisible(false)}
+              date={newFromTime}
             />
-            <View style={styles.modalButtons}>
-              <Button
-                title="Cancel"
-                onPress={() => {
-                  setShowCancelModal(false);
-                  setCancelReason("");
-                }}
-                color="#4C4C9D" 
-              />
-              <Button
-                title="Confirm"
-                onPress={handleCancelConfirmation}
-                color="#4CAF50"
-              />
-            </View>
+
+            <Button title="Set New To Time" onPress={() => setToPickerVisible(true)} />
+            <DateTimePickerModal
+              isVisible={isToPickerVisible}
+              mode="datetime"
+              onConfirm={(date) => { setNewToTime(date); setToPickerVisible(false); }}
+              onCancel={() => setToPickerVisible(false)}
+              date={newToTime}
+            />
+
+            <Button title="Confirm New Timing" onPress={handleChangeTiming} color="#5cb85c" />
+            <Button title="Cancel" onPress={() => setShowTimePickerModal(false)} />
           </View>
         </View>
       </Modal>
@@ -213,7 +236,7 @@ export default function ParkingSlots({ route }) {
   );
 }
 
-function ParkingSlotCard({ slot, navigation, onCancel }) {
+function ParkingSlotCard({ slot, onCancel }) {
   const isOccupied = slot.status === "reserved";
 
   const formatDateTime = (timestamp) => {
@@ -226,16 +249,14 @@ function ParkingSlotCard({ slot, navigation, onCancel }) {
       <Svg height="50" width="50">
         <Circle cx="25" cy="25" r="20" fill={isOccupied ? "red" : "green"} />
       </Svg>
-  
       <View style={styles.cardText}>
         <Text style={styles.slotNumber}>Slot {slot.id} ({slot.deck})</Text>
         <Text style={styles.statusText}>{isOccupied ? "Booked" : "Available"}</Text>
         <Text style={styles.timeText}>From: {formatDateTime(slot.from)}</Text>
         <Text style={styles.timeText}>To: {formatDateTime(slot.to)}</Text>
       </View>
-  
       {isOccupied && (
-        <TouchableOpacity style={styles.cancelButton} onPress={() => onCancel(slot.id)}>
+        <TouchableOpacity style={styles.cancelButton} onPress={() => onCancel(slot)}>
           <Text style={styles.cancelText}>X</Text>
         </TouchableOpacity>
       )}
@@ -323,11 +344,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 10,
   },
-  modalSubtitle: {
-    fontSize: 14,
-    marginBottom: 15,
-    color: "gray",
-  },
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
@@ -336,9 +352,5 @@ const styles = StyleSheet.create({
     minHeight: 100,
     marginBottom: 20,
     textAlignVertical: "top",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
   },
 });
