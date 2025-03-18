@@ -23,6 +23,8 @@ import Reset_Passwd from './components/Reset_passwd'
 import Login_hist from './components/Login_hist'
 import PaymentService from './components/PaymentService'
 import PaymentBooking from './components/PaymentBooking'
+import CardPayment from './components/CardPayment'
+
 const Stack = createStackNavigator()
 
 export default function App() {
@@ -126,6 +128,9 @@ export default function App() {
         initialParams={{ session }} />
         <Stack.Screen name="PaymentBooking" 
         component={PaymentBooking}
+        initialParams={{ session }} />
+        <Stack.Screen name="CardPayment" 
+        component={CardPayment}
         initialParams={{ session }} />
         <Stack.Screen name='reset' component={Reset} />
         <Stack.Screen name='ResetPassword' component={Reset_Passwd} />

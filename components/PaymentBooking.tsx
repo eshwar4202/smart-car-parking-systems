@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert , Linking } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { createClient } from '@supabase/supabase-js';
 
@@ -46,8 +46,20 @@ export default function BookingPaymentService() {
       Alert.alert('Error', 'Please select a payment method.');
       return;
     }
+    if (paymentMethod === 'UPI') {
+      const upiId = 'q653401402@ybl'; 
+      const upiUrl = `upi://pay?pa=${upiId}&pn=Business&mc=123456&tid=txn123456&tr=123456&tn=BookingPayment&am=${totalPrice}&cu=INR`;
+    
+      Linking.openURL(upiUrl)
+        .then(() => Alert.alert('Success', `Transaction of ₹${totalPrice} initiated.`))
+        .catch(() => Alert.alert('Error', 'Unable to process payment.'));
+      
+      return;
+    }
+     else if (paymentMethod === 'Credit/Debit Card') {
+      navigation.navigate('CardPayment', { totalPrice });}
+    else if (paymentMethod === 'E-Wallet') {
 
-    if (paymentMethod === 'E-Wallet') {
       Alert.alert(
         'Confirm Payment',
         `Are you sure you want to deduct ₹${totalPrice} from your e-wallet?`,
