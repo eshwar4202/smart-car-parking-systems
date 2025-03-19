@@ -51,7 +51,8 @@ const Payment = ({ route, navigation }) => {
 
       Alert.alert(
         "Payment Redirection",
-        `You are being redirected to payment page for reserving ${slots.length} parking slot(s) for ₹${amount}.`,
+        `You are being redirected to the payment page for reserving ${slots.length} parking slot(s) for ₹${amount}.`,
+      
         [
           {
             text: "OK",
@@ -109,6 +110,14 @@ const Payment = ({ route, navigation }) => {
       <TouchableOpacity style={styles.payButton} onPress={handlePayment}>
         <Text style={styles.payButtonText}>Pay Now</Text>
       </TouchableOpacity>
+      <TouchableOpacity
+      onPress={() => navigation.navigate('Installments')}
+      style={[styles.button, styles.installmentButton]} // ✅ Add a custom style
+      >
+      <Text style={[styles.buttonText, styles.installmentText]}>Pay in Installments</Text>
+      </TouchableOpacity>
+
+
 
       <TouchableOpacity
         style={styles.cancelButton}
@@ -127,6 +136,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f5f5f5',
   },
+
   card: {
     backgroundColor: 'white',
     borderRadius: 10,
@@ -192,6 +202,27 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 16,
   },
+  installmentButton: {
+    backgroundColor: '#FFD700', // Golden yellow to stand out
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: '#FFA500',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  
+  installmentText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  
 });
 
 export default Payment;

@@ -24,6 +24,9 @@ import Login_hist from './components/Login_hist'
 import PaymentService from './components/PaymentService'
 import PaymentBooking from './components/PaymentBooking'
 import CardPayment from './components/CardPayment'
+import SelectPlan from './components/selectplan';
+import InstallmentsScreen from './components/Installments';
+
 
 const Stack = createStackNavigator()
 
@@ -107,6 +110,12 @@ export default function App() {
         />
         <Stack.Screen name="Service" component={Service} initialParams={{ session }} />
         <Stack.Screen name="Payment" component={Payment} />
+        <Stack.Screen
+          name="Installments"
+          component={InstallmentsScreen}
+          options={{ title: 'Payment Installments' }}
+        />
+
         <Stack.Screen name="faq" component={FAQ} />
         <Stack.Screen
           name="Pay_hist"
