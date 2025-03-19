@@ -1,37 +1,44 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import { useNavigation } from '@react-navigation/native'; // ✅ Add this
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
-const InstallmentPlanScreen = () => {
-  const [months, setMonths] = useState('15');
-  const navigation = useNavigation(); // ✅ Hook to get navigation prop
+// Get screen width
+const { width } = Dimensions.get('window');
+
+const InstallmentPlan = ({ route }) => {
+  const navigation = useNavigation();
+  const { totalAmount } = route.params;
+
+  const [selectedPlan, setSelectedPlan] = useState(3); // Default to 3 installments
+
+  const handleSelectPlan = (count) => {
+    setSelectedPlan(count);
+  };
+
+  const handleConfirmPlan = () => {
+    const installmentAmount = (totalAmount / selectedPlan).toFixed(2);
+    navigation.navigate('InstallmentTracker', { totalAmount, installmentAmount, installmentCount: selectedPlan });
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Select Your Installment Plan</Text>
+      <Text style={styles.title}>Choose Installment Plan</Text>
+      <Text style={styles.info}>Total Amount: ₹{totalAmount}</Text>
 
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={months}
-          onValueChange={(itemValue) => setMonths(itemValue)}
-          style={styles.picker}
-          dropdownIconColor="#4CAF50"
-        >
-          <Picker.Item label="2 Weeks" value="15" />
-          <Picker.Item label="4 Weeks" value="30" />
-          <Picker.Item label="8 Weeks" value="60" />
-        </Picker>
+      <View style={styles.planContainer}>
+        {[2, 3, 4].map((count) => (
+          <TouchableOpacity
+            key={count}
+            style={[styles.planButton, selectedPlan === count && styles.selectedPlan]}
+            onPress={() => handleSelectPlan(count)}
+          >
+            <Text style={styles.planText}>{count} Installments</Text>
+            <Text style={styles.planAmount}>₹{(totalAmount / count).toFixed(2)} each</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      {/* ✅ Updated Button with alert + navigation */}
-      <TouchableOpacity
-        style={styles.confirmButton}
-        onPress={() => {
-          alert(`✅ Plan selected: ${months} days`);
-          navigation.navigate('InstallmentTracker', { selectedPlan: months });
-        }}
-      >
+      <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmPlan}>
         <Text style={styles.buttonText}>Confirm Plan</Text>
       </TouchableOpacity>
     </View>
@@ -39,12 +46,29 @@ const InstallmentPlanScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f4f4f4', padding: 20 },
-  heading: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 20 },
-  pickerContainer: { width: '80%', borderColor: '#ddd', borderWidth: 1, borderRadius: 10, backgroundColor: '#fff', marginBottom: 20, elevation: 2 },
-  picker: { height: 50, width: '100%', color: '#444' },
-  confirmButton: { backgroundColor: '#4CAF50', paddingVertical: 15, paddingHorizontal: 40, borderRadius: 10, alignItems: 'center', elevation: 3 },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  container: { flex: 1, padding: 20, backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  info: { fontSize: 18, marginBottom: 10, textAlign: 'center' },
+
+  // Make sure buttons fit within the screen width
+  planContainer: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', marginVertical: 20 },
+  planButton: {
+    width: width * 0.28, // Each button takes up about 28% of screen width
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    marginHorizontal: 5,
+    marginVertical: 5,
+    alignItems: 'center',
+  },
+  selectedPlan: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
+  planText: { fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+  planAmount: { fontSize: 14, color: '#555', textAlign: 'center' },
+
+  confirmButton: { backgroundColor: '#4CAF50', padding: 15, borderRadius: 10, marginTop: 20, width: width * 0.8 },
+  buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
 });
 
-export default InstallmentPlanScreen;
+export default InstallmentPlan;

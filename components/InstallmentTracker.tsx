@@ -1,84 +1,73 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 const InstallmentTracker = ({ route }) => {
-  const { selectedPlan } = route.params;
+  const navigation = useNavigation();
+  const { totalAmount, installmentAmount, installmentCount } = route.params;
+  const [paidInstallments, setPaidInstallments] = useState(0);
 
-  // 🔹 State to track payment status of each installment
-  const [installments, setInstallments] = useState([
-    { id: 1, status: 'Unpaid' },
-    { id: 2, status: 'Unpaid' },
-    { id: 3, status: 'Unpaid' },
-  ]);
+  const handlePayInstallment = () => {
+    if (paidInstallments < installmentCount - 1) {
+      setPaidInstallments(paidInstallments + 1);
+      Alert.alert('Payment Successful', `Installment ${paidInstallments + 1} paid successfully!`);
+    } else if (paidInstallments === installmentCount - 1) {
+      setPaidInstallments(paidInstallments + 1);
+      Alert.alert('🎉 Payment Completed!', 'Congratulations! All installments are completed.');
+    }
+  };
 
-  // 🔹 Handle payment action
-  const handlePayment = (id) => {
-    Alert.alert(
-      'Payment Confirmation',
-      `Proceed to pay for Installment ${id}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Proceed',
-          onPress: () => {
-            const updatedInstallments = installments.map((installment) =>
-              installment.id === id ? { ...installment, status: 'Paid' } : installment
-            );
-            setInstallments(updatedInstallments);
-            Alert.alert('✅ Payment Successful', `Installment ${id} is now marked as Paid.`);
-          },
-        },
-      ]
-    );
+  // Ensure amounts round up to the next whole number
+  const remainingAmount = Math.ceil(totalAmount - paidInstallments * installmentAmount);
+  const isCompleted = paidInstallments === installmentCount;
+
+  const handleGoHome = () => {
+    navigation.navigate('Account'); // Navigate back to Account page
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Installment Tracker</Text>
-      <Text style={styles.text}>Selected Plan: {selectedPlan} days</Text>
+      <Text style={styles.title}>Installment Tracker</Text>
+      <Text style={styles.info}>Total Amount: ₹{Math.ceil(totalAmount)}</Text>
+      <Text style={styles.info}>Installment Plan: {installmentCount} payments of ₹{Math.ceil(installmentAmount)} each</Text>
 
-      {/* 🔹 Render 3 installments */}
-      {installments.map((installment) => (
-        <View key={installment.id} style={styles.installmentCard}>
-          <Text style={styles.installmentText}>
-            Installment {installment.id}: {installment.status}
-          </Text>
+      <Text style={styles.status}>
+        {isCompleted
+          ? '✅ All Installments Completed!'
+          : `💸 Installments Paid: ${paidInstallments}/${installmentCount}`}
+      </Text>
 
-          {installment.status === 'Unpaid' && (
-            <TouchableOpacity
-              style={styles.payButton}
-              onPress={() => handlePayment(installment.id)}
-            >
-              <Text style={styles.buttonText}>Proceed to Payment</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      ))}
+      <Text style={styles.remaining}>Remaining Amount: ₹{remainingAmount}</Text>
+
+      {!isCompleted && (
+        <TouchableOpacity style={styles.payButton} onPress={handlePayInstallment}>
+          <Text style={styles.buttonText}>Pay Next Installment</Text>
+        </TouchableOpacity>
+      )}
+
+      {isCompleted && (
+        <>
+          <Text style={styles.completedText}>🎉 Congratulations! Payment Completed 🎉</Text>
+          <TouchableOpacity style={styles.homeButton} onPress={handleGoHome}>
+            <Text style={styles.buttonText}>🏠 Back to home</Text>
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f4f4f4', padding: 20 },
-  heading: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 20 },
-  text: { fontSize: 18, marginBottom: 20, color: '#555' },
+  container: { flex: 1, padding: 20, backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
+  info: { fontSize: 18, marginBottom: 10 },
+  status: { fontSize: 18, marginVertical: 10, color: '#4CAF50', fontWeight: 'bold' },
+  remaining: { fontSize: 18, marginVertical: 10, color: '#FF5733', fontWeight: 'bold' },
 
-  installmentCard: { 
-    width: '90%', 
-    padding: 15, 
-    marginBottom: 10, 
-    borderRadius: 10, 
-    backgroundColor: '#fff', 
-    shadowColor: '#000', 
-    shadowOpacity: 0.1, 
-    shadowRadius: 4, 
-    elevation: 3, 
-    alignItems: 'center' 
-  },
-
-  installmentText: { fontSize: 18, color: '#444', marginBottom: 10 },
-  payButton: { backgroundColor: '#4CAF50', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  payButton: { backgroundColor: '#4CAF50', padding: 15, borderRadius: 10, marginTop: 20 },
+  homeButton: { backgroundColor: '#FF5733', padding: 15, borderRadius: 10, marginTop: 10 },
+  buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  completedText: { fontSize: 20, color: '#4CAF50', fontWeight: 'bold', marginTop: 20 },
 });
 
 export default InstallmentTracker;

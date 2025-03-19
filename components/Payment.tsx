@@ -111,11 +111,13 @@ const Payment = ({ route, navigation }) => {
         <Text style={styles.payButtonText}>Pay Now</Text>
       </TouchableOpacity>
       <TouchableOpacity
-      onPress={() => navigation.navigate('Installments')}
-      style={[styles.button, styles.installmentButton]} // ✅ Add a custom style
-      >
-      <Text style={[styles.buttonText, styles.installmentText]}>Pay in Installments</Text>
-      </TouchableOpacity>
+  onPress={() => navigation.navigate('Installments', { totalAmount: totalAmount })}
+  style={[styles.button, styles.installmentButton]}
+>
+  <Text style={[styles.buttonText, styles.installmentText]}>Pay in Installments</Text>
+</TouchableOpacity>
+
+
 
 
 
