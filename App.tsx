@@ -26,7 +26,7 @@ import PaymentBooking from './components/PaymentBooking'
 import CardPayment from './components/CardPayment'
 import SelectPlan from './components/selectplan';
 import InstallmentsScreen from './components/Installments';
-
+import InstallmentTracker from './components/InstallmentTracker';
 
 const Stack = createStackNavigator()
 
@@ -115,6 +115,11 @@ export default function App() {
           component={InstallmentsScreen}
           options={{ title: 'Payment Installments' }}
         />
+        <Stack.Screen
+          name="InstallmentTracker"
+          component={InstallmentTracker}
+          options={{ title: 'Track Your Installments' }}
+        />
 
         <Stack.Screen name="faq" component={FAQ} />
         <Stack.Screen
@@ -148,4 +153,5 @@ export default function App() {
 
     </NavigationContainer>
   )
+  
 }
