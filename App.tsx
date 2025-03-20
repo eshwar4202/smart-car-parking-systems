@@ -27,7 +27,8 @@ import CardPayment from './components/CardPayment'
 import SelectPlan from './components/selectplan';
 import InstallmentsScreen from './components/Installments';
 import InstallmentTracker from './components/InstallmentTracker';
-
+import EVCharging from './components/EVCharging'
+import ConfirmationPage from './components/ConfirmationPage'
 const Stack = createStackNavigator()
 
 export default function App() {
@@ -145,6 +146,12 @@ export default function App() {
         initialParams={{ session }} />
         <Stack.Screen name="CardPayment" 
         component={CardPayment}
+        initialParams={{ session }} />
+        <Stack.Screen name="EVCharging" 
+        component={EVCharging}
+        initialParams={{ session }} />
+        <Stack.Screen name="ConfirmationPage" 
+        component={ConfirmationPage}
         initialParams={{ session }} />
         <Stack.Screen name='reset' component={Reset} />
         <Stack.Screen name='ResetPassword' component={Reset_Passwd} />

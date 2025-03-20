@@ -15,6 +15,7 @@ const services = [
   { id: 2, name: 'Oil Change', description: 'Quick oil change service with quality oil.' },
   { id: 3, name: 'Tire Alignment', description: 'Ensure your tires are properly aligned for safety.' },
   { id: 4, name: 'Brake Repair', description: 'Professional brake repair and maintenance service.' },
+  { id: 5, name: 'EV Charging', description: 'Fast and reliable electric vehicle charging service.' },
 ];
 
 export default function ServiceBooking() {
@@ -83,9 +84,16 @@ export default function ServiceBooking() {
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={[styles.serviceItem, selectedService?.id === item.id && styles.selectedService]}
-            onPress={() => setSelectedService(item)}
-          >
+  style={[styles.serviceItem, selectedService?.id === item.id && styles.selectedService]}
+  onPress={() => {
+    if (item.name === 'EV Charging') {
+      navigation.navigate('EVCharging', { userId }); // Navigate to EVCharging page
+    } else {
+      setSelectedService(item);
+    }
+  }}
+>
+
             <Text style={styles.serviceName}>{item.name}</Text>
             <Text style={styles.serviceDesc}>{item.description}</Text>
           </TouchableOpacity>
