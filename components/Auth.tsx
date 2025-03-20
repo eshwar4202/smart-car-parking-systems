@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { Button, Input } from '@rneui/themed';
 import * as Location from 'expo-location';
 import { NavigationProp } from '@react-navigation/native'; // Import NavigationProp for typing
+import * as Device from 'expo-device';
 
 // Define props interface
 interface AuthProps {
@@ -54,6 +55,7 @@ export default function Auth({ navigation }: AuthProps) { // Accept navigation a
       latitude: location.latitude,
       longitude: location.longitude,
       login_time: new Date().toISOString(),
+      device: Device.manufacturer + Device.modelName
     };
 
     const { error } = await supabase
@@ -122,14 +124,14 @@ export default function Auth({ navigation }: AuthProps) { // Accept navigation a
         }
       }
 
-      navigation.navigate('Account'); 
+      navigation.navigate('Account');
     } catch (err) {
       Alert.alert('Sign In Error', err.message);
     } finally {
       setLoading(false);
     }
   }
-  
+
   async function signUpWithEmail() {
     if (password !== confirmPassword) {
       Alert.alert('Password Mismatch', 'Passwords do not match');
@@ -192,11 +194,11 @@ export default function Auth({ navigation }: AuthProps) { // Accept navigation a
             onPress={() => setIsSignUp(false)}
             containerStyle={styles.toggleButton}
             buttonStyle={{
-              backgroundColor: isSignUp ? 'white' : '#4C4C9D',  
-              borderColor: '#4C4C9D',  
+              backgroundColor: isSignUp ? 'white' : '#4C4C9D',
+              borderColor: '#4C4C9D',
             }}
             titleStyle={{
-              color: isSignUp ? '#4C4C9D' : 'white', 
+              color: isSignUp ? '#4C4C9D' : 'white',
             }}
           />
           <Button
@@ -205,11 +207,11 @@ export default function Auth({ navigation }: AuthProps) { // Accept navigation a
             onPress={() => setIsSignUp(true)}
             containerStyle={styles.toggleButton}
             buttonStyle={{
-              backgroundColor: !isSignUp ? 'white' : '#4C4C9D',  
-              borderColor: '#4C4C9D', 
+              backgroundColor: !isSignUp ? 'white' : '#4C4C9D',
+              borderColor: '#4C4C9D',
             }}
             titleStyle={{
-              color: !isSignUp ? '#4C4C9D' : 'white',  
+              color: !isSignUp ? '#4C4C9D' : 'white',
             }}
           />
         </View>
@@ -243,7 +245,7 @@ export default function Auth({ navigation }: AuthProps) { // Accept navigation a
         </View>
         {isSignUp && (
           <>
-              <View style={[styles.verticallySpaced, styles.inputSpacing]}>
+            <View style={[styles.verticallySpaced, styles.inputSpacing]}>
               <Input
                 label="Confirm Password"
                 leftIcon={{ type: 'font-awesome', name: 'lock', color: '#4C4C9D' }}
@@ -258,18 +260,18 @@ export default function Auth({ navigation }: AuthProps) { // Accept navigation a
               />
             </View>
             <View style={[styles.verticallySpaced, styles.inputSpacing]}>
-            <Input
-              label="Username"
-              leftIcon={{ type: 'font-awesome', name: 'user', color: '#4C4C9D' }}
-              onChangeText={setUsername}
-              value={username}
-              placeholder="username"
-              autoCapitalize="none"
-              inputStyle={styles.inputStyle}
-              inputContainerStyle={styles.inputContainer}
-              labelStyle={styles.labelStyle}
-            />
-          </View>
+              <Input
+                label="Username"
+                leftIcon={{ type: 'font-awesome', name: 'user', color: '#4C4C9D' }}
+                onChangeText={setUsername}
+                value={username}
+                placeholder="username"
+                autoCapitalize="none"
+                inputStyle={styles.inputStyle}
+                inputContainerStyle={styles.inputContainer}
+                labelStyle={styles.labelStyle}
+              />
+            </View>
           </>
         )}
         <View style={[styles.verticallySpaced, styles.mt20]}>
@@ -281,13 +283,13 @@ export default function Auth({ navigation }: AuthProps) { // Accept navigation a
             onPress={() => (isSignUp ? signUpWithEmail() : signInWithEmail())}
           />
           {!isSignUp && (
-          <Button
-            title="Reset Password"
-            buttonStyle={styles.buttonStyle}
-            titleStyle={styles.buttonTitleStyle}
-            onPress={() => navigation.navigate('reset')} // Use the prop here
-            containerStyle={styles.resetButton}
-          />)}
+            <Button
+              title="Reset Password"
+              buttonStyle={styles.buttonStyle}
+              titleStyle={styles.buttonTitleStyle}
+              onPress={() => navigation.navigate('reset')} // Use the prop here
+              containerStyle={styles.resetButton}
+            />)}
         </View>
       </View>
     </ScrollView>
@@ -312,7 +314,7 @@ const styles = StyleSheet.create({
   toggleButton: {
     flex: 1,
     marginHorizontal: 5,
-    
+
   },
   verticallySpaced: {
     paddingTop: 8,
@@ -347,7 +349,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   resetButton: {
-    marginTop: 8, 
+    marginTop: 8,
   },
   inputSpacing: {
     marginTop: 10,
