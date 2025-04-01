@@ -4,11 +4,11 @@
     "slug": "expo-user-management",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/nalan.jpg",
+    "icon": "./assets/nalan.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/nalan.jpg",
+      "image": "./assets/nalan.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,16 +17,27 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/nalan.jpg",
+        "foregroundImage": "./assets/nalan.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
-      ]
+      ],
+      "package": "com.anonymous.expousermanagement"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b70ecd84-e078-41a4-a538-5d27d2df4686"
+      }
+    },
+    "plugins": [
+      "expo-router"
+    ]
   }
 }
