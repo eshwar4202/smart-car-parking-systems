@@ -1,5 +1,8 @@
 pipeline {
     agent {label "linux"}
+    environment {
+        EAS_ACCESS_TOKEN = credentials('EAS_ACCESS_TOKEN')  // Use the saved token
+    }
     stages {
         stage('Dependecies') {
             steps {
