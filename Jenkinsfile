@@ -13,7 +13,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo "eas build -p android --profile preview"
-                sh "EAS_SECRET_TOKEN=EhHxE27ddIAWc04Y6IARTPipytjK6M8AUfUARkU9 eas build --platform android --non-interactive"
+                sh "EXPO_TOKEN=EhHxE27ddIAWc04Y6IARTPipytjK6M8AUfUARkU9 eas build --platform android --non-interactive"
               }
           }
         stage('Hello') {
